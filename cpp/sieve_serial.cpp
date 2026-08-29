@@ -2,7 +2,23 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+
+namespace {
+constexpr long long kMaxLimit = 100000000;
+
+long long parse_limit(const char* value) {
+    size_t parsed = 0;
+    const long long limit = std::stoll(value, &parsed);
+    if (value[parsed] != '\0' || limit < 2 || limit > kMaxLimit) {
+        throw std::invalid_argument("limit must be an integer between 2 and 100000000");
+    }
+    return limit;
+}
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -10,18 +26,25 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    long long limit = std::stoll(argv[1]);
+    long long limit;
+    try {
+        limit = parse_limit(argv[1]);
+    } catch (const std::exception& error) {
+        std::cerr << "Invalid limit: " << error.what() << std::endl;
+        return 1;
+    }
     bool return_primes = (argc >= 3) ? (std::string(argv[2]) == "1") : true;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::vector<bool> is_prime(limit + 1, true);
-    is_prime[0] = is_prime[1] = false;
+    // Match the OpenMP representation so timing compares parallelism, not bit packing.
+    std::vector<char> is_prime(limit + 1, 1);
+    is_prime[0] = is_prime[1] = 0;
 
     for (long long p = 2; p * p <= limit; p++) {
         if (is_prime[p]) {
             for (long long i = p * p; i <= limit; i += p) {
-                is_prime[i] = false;
+                is_prime[i] = 0;
             }
         }
     }
@@ -34,6 +57,7 @@ int main(int argc, char* argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
 
+    std::cout << std::setprecision(12);
     std::cout << "{";
     std::cout << "\"algorithm\":\"serial\",";
     std::cout << "\"limit\":" << limit << ",";

@@ -13,6 +13,10 @@ __pycache__/
 *.pyc
 .venv/
 
+# Locally generated benchmark evidence
+benchmarks/scalability_results.csv
+benchmarks/scalability_metadata.json
+
 # IDE
 .vscode/
 .idea/

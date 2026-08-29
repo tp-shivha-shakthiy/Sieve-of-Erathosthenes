@@ -77,7 +77,7 @@ def run_sieve(req: SieveRequest):
     if req.algorithm == "both" and len(results) == 2:
         serial_time = results[0]["execution_time_ms"]
         openmp_time = results[1]["execution_time_ms"]
-        results[0]["speedup"] = round(serial_time / openmp_time, 2) if openmp_time > 0 else 0
-        results[1]["speedup"] = 1.0
+        results[0]["speedup"] = 1.0
+        results[1]["speedup"] = round(serial_time / openmp_time, 2) if openmp_time > 0 else 0
 
     return {"results": results, "parameters": req.model_dump()}

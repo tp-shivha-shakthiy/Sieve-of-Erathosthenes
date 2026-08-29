@@ -1,0 +1,11 @@
+flowchart TD
+    M[Master: validation and base primes] --> F[Fork OpenMP team]
+    F --> T0[Thread 0: assigned static blocks]
+    F --> T1[Thread 1: assigned static blocks]
+    F --> T2[Thread 2: assigned static blocks]
+    F --> TP[Thread P-1: assigned static blocks]
+    T0 --> J[Implicit barrier and reduction]
+    T1 --> J
+    T2 --> J
+    TP --> J
+    J --> O[Master: output]

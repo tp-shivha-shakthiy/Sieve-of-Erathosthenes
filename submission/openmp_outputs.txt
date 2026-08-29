@@ -1,0 +1,53 @@
+Build: g++ -O2 -Wall -Wextra -std=c++17 -fopenmp openmp_sieve.cpp -o bin\openmp_sieve.exe
+
+> .\bin\openmp_sieve.exe 30 4
+
+Execution mode: OpenMP
+Input size (n): 30
+Requested thread count: 4
+Actual thread count: 4
+Block size: 32768
+Number of blocks: 1
+Timing repetitions: 1000
+Prime count: 10
+Elapsed time (ms): 0.087000
+Primes: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29
+
+> .\bin\openmp_sieve.exe 100000 4
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: OpenMP
+Input size (n): 100000
+Requested thread count: 4
+Actual thread count: 4
+Block size: 32768
+Number of blocks: 4
+Timing repetitions: 10
+Prime count: 9592
+Elapsed time (ms): 0.200009
+
+> .\bin\openmp_sieve.exe 1000000 4
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: OpenMP
+Input size (n): 1000000
+Requested thread count: 4
+Actual thread count: 4
+Block size: 32768
+Number of blocks: 31
+Timing repetitions: 10
+Prime count: 78498
+Elapsed time (ms): 1.300001
+
+> .\bin\openmp_sieve.exe 10000000 4
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: OpenMP
+Input size (n): 10000000
+Requested thread count: 4
+Actual thread count: 4
+Block size: 32768
+Number of blocks: 306
+Timing repetitions: 10
+Prime count: 664579
+Elapsed time (ms): 7.500005

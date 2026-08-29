@@ -1,0 +1,14 @@
+Timestamp UTC: 2026-08-25T16:54:00.598769+00:00
+Platform: Windows-11-10.0.26200-SP0
+Processor: Intel64 Family 6 Model 189 Stepping 1, GenuineIntel
+Physical CPU core count: 8
+Logical CPU count: 8
+Compiler: g++ (run g++ --version for exact version)
+Build flags: -O2 -Wall -Wextra -std=c++17; OpenMP additionally uses -fopenmp
+Timer: omp_get_wtime() (monotonic wall-clock timer)
+Block size: 32768 entries
+Warm-ups per configuration: 1
+Measured repetitions per configuration: 5
+In-program timing repetitions per reported sample: 10
+Limits: 100000, 1000000, 10000000
+Requested OpenMP threads: 1, 2, 4, 8

@@ -1,0 +1,45 @@
+Build: g++ -O2 -Wall -Wextra -std=c++17 -fopenmp serial_sieve.cpp -o bin\serial_sieve.exe
+
+> .\bin\serial_sieve.exe 30
+
+Execution mode: Serial
+Input size (n): 30
+Block size: 32768
+Number of blocks: 1
+Timing repetitions: 1000
+Prime count: 10
+Elapsed time (ms): 0.001000
+Primes: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29
+
+> .\bin\serial_sieve.exe 100000
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: Serial
+Input size (n): 100000
+Block size: 32768
+Number of blocks: 4
+Timing repetitions: 10
+Prime count: 9592
+Elapsed time (ms): 0.699997
+
+> .\bin\serial_sieve.exe 1000000
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: Serial
+Input size (n): 1000000
+Block size: 32768
+Number of blocks: 31
+Timing repetitions: 10
+Prime count: 78498
+Elapsed time (ms): 2.500010
+
+> .\bin\serial_sieve.exe 10000000
+Student name: tp-shivha-shakthiy
+Roll number: ROLL_NUMBER_HERE
+Execution mode: Serial
+Input size (n): 10000000
+Block size: 32768
+Number of blocks: 306
+Timing repetitions: 10
+Prime count: 664579
+Elapsed time (ms): 23.600006

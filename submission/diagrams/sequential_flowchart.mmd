@@ -1,0 +1,11 @@
+flowchart TD
+    A([Start]) --> B[Validate n]
+    B --> C[Generate base primes up to floor(sqrt n)]
+    C --> D[Select next contiguous block]
+    D --> E[Initialize private uint8_t segment to 1]
+    E --> F[For each base prime, mark multiples from max(first multiple, p squared)]
+    F --> G[Count unmarked values in block]
+    G --> H{More blocks?}
+    H -->|Yes| D
+    H -->|No| I[Display count and mean elapsed time]
+    I --> J([End])

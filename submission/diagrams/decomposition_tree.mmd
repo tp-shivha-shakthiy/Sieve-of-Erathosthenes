@@ -1,0 +1,11 @@
+flowchart TD
+    A[Parallel Sieve] --> B[Serial setup]
+    B --> B1[Input validation]
+    B --> B2[Base-prime generation]
+    A --> C[Parallel block processing]
+    C --> C0[Block 0]
+    C --> C1[Block 1]
+    C --> C2[Block 2]
+    C --> C3[Block k-1]
+    A --> D[Reduction]
+    A --> E[Output]

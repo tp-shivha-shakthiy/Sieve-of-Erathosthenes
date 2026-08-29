@@ -1,0 +1,9 @@
+flowchart TD
+    I[Input validation] --> S[Base-prime generation]
+    S --> B0[Block 0]
+    S --> B1[Block 1]
+    S --> BK[Block k-1]
+    B0 --> R[Reduction]
+    B1 --> R
+    BK --> R
+    R --> O[Output]

@@ -1,0 +1,8 @@
+flowchart LR
+    S[Setup: base_primes] -. shared read-only .-> B0[Block 0]
+    S -. shared read-only .-> B1[Block 1]
+    S -. shared read-only .-> BK[Block k-1]
+    B0 -. local count .-> R[Reduction]
+    B1 -. local count .-> R
+    BK -. local count .-> R
+    R -. total count .-> O[Output]

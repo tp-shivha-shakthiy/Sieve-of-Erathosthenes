@@ -4,16 +4,12 @@ project(SieveOfEratosthenes LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 
 add_executable(sieve_serial sieve_serial.cpp)
 
 add_executable(sieve_openmp sieve_openmp.cpp)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(sieve_openmp OpenMP::OpenMP_CXX)
-else()
-    message(WARNING "OpenMP not found, sieve_openmp will run single-threaded")
-endif()
+target_link_libraries(sieve_openmp OpenMP::OpenMP_CXX)
 
 add_custom_target(copy_bins ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../backend/bin

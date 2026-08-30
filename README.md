@@ -1,153 +1,90 @@
-# Sieve of Eratosthenes — Serial vs OpenMP Benchmark
+# Sieve of Eratosthenes
 
-A full-stack application that benchmarks the **Sieve of Eratosthenes** implemented in
-C++, comparing a **serial** version against an **OpenMP-parallelized** version, with
-interactive visualization in a React frontend.
-
-```
-┌──────────────────┐
-│   React Frontend  │  Vite + Recharts (charts & visualizations)
-└────────┬─────────┘
-         │         HTTP / API
-┌────────▼─────────┐
-│   FastAPI Backend │  Spawns C++ binaries, parses JSON output
-└────────┬─────────┘
- ┌───────┴────────┐
- Serial C++       OpenMP C++
- └───────┬────────┘
-         │         Results JSON
-┌────────▼─────────┐
-│  Visualization   │
-│   + Charts       │
-└──────────────────┘
-```
+A web interface for comparing serial and OpenMP implementations of the Sieve of Eratosthenes.
 
 ## Features
 
-- **Two C++ implementations** of the sieve
-  - Serial (`sieve_serial.cpp`)
-  - Parallel with OpenMP (`sieve_openmp.cpp`) using a stripe-based design
-- **FastAPI backend** that runs the C++ binaries as subprocesses and returns structured JSON
-- **React frontend** with:
-  - Configurable upper limit (with presets up to 100M)
-  - Algorithm selection and OpenMP thread count
-  - Execution-time bar chart
-  - Speedup-factor chart
-  - Visual prime-number grid
-  - Raw JSON output for inspection
+- C++ serial and OpenMP sieve implementations
+- FastAPI backend that executes the native binaries and returns JSON results
+- React frontend with configurable limits, thread counts, charts, and prime visualization
 
 ## Project Structure
 
-```
-Sieve-of-Erathosthenes/
-├── cpp/
-│   ├── sieve_serial.cpp        # Serial implementation
-│   ├── sieve_openmp.cpp        # OpenMP implementation
-│   ├── CMakeLists.txt          # CMake build (copies binaries to backend/bin)
-│   └── Makefile                # Alternative Make build
-├── backend/
-│   ├── main.py                 # FastAPI app (POST /sieve, GET /health)
-│   ├── requirements.txt
-│   └── bin/                    # Compiled binaries (created by build)
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx             # Main app + state
-│   │   └── components/
-│   │       ├── SieveControls.tsx
-│   │       ├── PerformanceChart.tsx
-│   │       ├── SpeedupChart.tsx
-│   │       └── PrimeGrid.tsx
-│   ├── package.json
-│   ├── vite.config.ts          # /api proxy → :8000
-│   └── index.html
-├── build.bat / build.sh        # Build everything (C++ + deps)
-├── start.bat / start.sh        # Launch backend + frontend
-└── .gitignore
+```text
+cpp/                 C++ serial and OpenMP implementations
+backend/             FastAPI service and compiled binaries
+frontend/            Vite React frontend
+benchmarks/          Repeatable scalability benchmark runner
+build.bat, build.sh  Build helpers
+start.bat, start.sh  Launch helpers
 ```
 
 ## Prerequisites
 
-- **C++ compiler** with OpenMP support (e.g. GCC/g++ with `-fopenmp`, or MSVC)
-- **CMake** (optional — falls back to g++ if not found)
-- **Python 3.9+** with `pip`
-- **Node.js 18+** with `npm`
+- Python 3.9 or later
+- Node.js and npm
+- MinGW `g++` with OpenMP support
 
-## Build
+## Run on Windows
 
-```bash
-# Windows
-.\build.bat
+From the repository root in PowerShell, install the API and frontend dependencies:
 
-# macOS / Linux
-./build.sh
+```powershell
+python -m pip install -r backend\requirements.txt
+npm --prefix frontend ci
 ```
 
-This compiles both C++ binaries into `backend/bin/`, and installs the Python and
-Node dependencies.
+Build the native sieve executables:
 
-## Run
+```powershell
+g++ -O2 -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
+g++ -O2 -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
+```
 
-```bash
-# Windows
+Start both services:
+
+```powershell
 .\start.bat
-
-# macOS / Linux
-./start.sh
 ```
 
-- Backend: **http://localhost:8000**
-- Frontend: **http://localhost:5173**
+Open http://127.0.0.1:5173 in a browser. The API health endpoint is http://127.0.0.1:8000/health.
 
-Open the frontend, choose a limit and algorithm, then click **Run Sieve**.
+## Verify the API
+
+With the backend running:
+
+```powershell
+$body = @{ limit = 100000; algorithm = "both"; num_threads = 4; return_primes = $false } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/sieve" -Method Post -ContentType "application/json" -Body $body
+```
+
+Both results should report a `prime_count` of `9592`.
 
 ## API
 
-### `GET /health`
-Returns `{"status": "ok"}`.
+`GET /health` returns `{"status":"ok"}`.
 
-### `POST /sieve`
-Body:
+`POST /sieve` accepts:
+
 ```json
 {
-  "limit": 10000000,
-  "algorithm": "both",        // "serial" | "openmp" | "both"
-  "num_threads": 4,           // OpenMP thread count
-  "return_primes": false      // include the primes array
+  "limit": 100000,
+  "algorithm": "both",
+  "num_threads": 4,
+  "return_primes": false
 }
 ```
 
-Response:
-```json
-{
-  "results": [
-    {
-      "algorithm": "serial",
-      "limit": 10000000,
-      "prime_count": 664579,
-      "execution_time_ms": 35.1,
-      "primes": [],
-      "speedup": 1.75
-    },
-    {
-      "algorithm": "openmp",
-      "limit": 10000000,
-      "num_threads": 4,
-      "prime_count": 664579,
-      "execution_time_ms": 20.1,
-      "speedup": 1.0
-    }
-  ],
-  "parameters": { "...": "..." }
-}
+`algorithm` must be `serial`, `openmp`, or `both`. The API accepts limits from 2 through 100,000,000. For `both`, the serial result is the `1.0` speedup baseline and the OpenMP result reports `serial_time / openmp_time`.
+
+## Development Commands
+
+```powershell
+# Rebuild after changing cpp/sieve_serial.cpp or cpp/sieve_openmp.cpp
+g++ -O2 -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
+g++ -O2 -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
+
+# Run services separately
+python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+npm --prefix frontend run dev -- --host 127.0.0.1
 ```
-
-For `"algorithm": "both"`, the serial result's `speedup` equals
-`serial_time / openmp_time`.
-
-## Notes
-
-- **Custom limits**: the backend accepts any limit from 2 up to 100,000,000.
-- **Prime array**: returned only when `return_primes` is `true` and `limit ≤ 1,000,000`
-  (to keep responses small).
-- **Verification**: both implementations produce identical prime counts
-  (e.g. 25 ≤ 100, 664,579 ≤ 10M, 5,761,455 ≤ 100M).

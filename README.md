@@ -6,7 +6,8 @@ A web interface for comparing serial and OpenMP implementations of the Sieve of 
 
 - C++ serial and OpenMP sieve implementations
 - FastAPI backend that executes the native binaries and returns JSON results
-- React frontend with configurable limits, thread counts, charts, and prime visualization
+- React observability dashboard with configurable limits, thread counts, charts, prime visualization, and JSON inspection
+- Run Context panel with current settings, run validation, actual in-session history, and machine capability data
 
 ## Project Structure
 
@@ -49,6 +50,8 @@ Start both services:
 
 Open http://127.0.0.1:5173 in a browser. The API health endpoint is http://127.0.0.1:8000/health.
 
+After changing a backend file, close the Backend console window and rerun `start.bat`, or use the reload command in [Development Commands](#development-commands).
+
 ## Verify the API
 
 With the backend running:
@@ -63,6 +66,8 @@ Both results should report a `prime_count` of `9592`.
 ## API
 
 `GET /health` returns `{"status":"ok"}`.
+
+`GET /system` returns real runtime capability data used by the Run Context panel: logical CPU count, processor architecture, whether the OpenMP executable is available, and the installed `g++` version when it can be detected.
 
 `POST /sieve` accepts:
 
@@ -88,3 +93,5 @@ g++ -O2 -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
 python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 npm --prefix frontend run dev -- --host 127.0.0.1
 ```
+
+The frontend proxies `/api/*` requests to the backend. For example, `http://127.0.0.1:5173/api/system` returns the same metadata as `http://127.0.0.1:8000/system`.

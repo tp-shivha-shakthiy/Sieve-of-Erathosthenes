@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: sieve-backend
+    runtime: docker
+    rootDir: ./
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: web
+    name: sieve-frontend
+    runtime: static
+    rootDir: ./frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
+    healthCheckPath: /
+    envVars:
+      - key: VITE_API_URL
+        sync: false

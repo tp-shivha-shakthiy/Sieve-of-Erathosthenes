@@ -82,6 +82,49 @@ Both results should report a `prime_count` of `9592`.
 
 `algorithm` must be `serial`, `openmp`, or `both`. The API accepts limits from 2 through 100,000,000. For `both`, the serial result is the `1.0` speedup baseline and the OpenMP result reports `serial_time / openmp_time`.
 
+## Deployment (Render)
+
+This full stack is deployed on [Render](https://render.com) via the `render.yaml`
+Blueprint — Vercel/static-only hosts can't run the C++ subprocesses, so Render's
+Docker web service is used for the backend.
+
+### Live links
+
+- Frontend: https://sieve-frontend-0uou.onrender.com
+- Backend: https://sieve-backend-jcau.onrender.com
+- Health check: https://sieve-backend-jcau.onrender.com/health
+
+### Architecture on Render
+
+- `sieve-backend` — Docker web service (`backend/Dockerfile`). The multi-stage build
+  compiles both C++ binaries with `g++` + OpenMP (`-fopenmp`) in a `gcc:14` stage,
+  then runs FastAPI on a slim Python image. `libgomp1` is installed so the OpenMP
+  binary can load `libgomp.so.1` at runtime.
+- `sieve-frontend` — static site. Builds the Vite app with `npm ci && npm run build`
+  and serves `dist`.
+
+### Wiring the services together
+
+The frontend reads its backend URL from `VITE_API_URL` (baked in at build time), and
+the backend allows cross-origin requests listed in `ALLOWED_ORIGINS`. Set these on
+Render:
+
+| Service | Variable | Value |
+| --- | --- | --- |
+| `sieve-frontend` | `VITE_API_URL` | `https://sieve-backend-jcau.onrender.com` |
+| `sieve-backend` | `ALLOWED_ORIGINS` | `https://sieve-frontend-0uou.onrender.com` |
+
+After changing `VITE_API_URL`, trigger **Manual Deploy → Clear build cache & deploy**
+on the frontend (the value is baked into the bundle at build time).
+
+### Redeploying
+
+Deploys are tied to `main`. After pushing, trigger **Manual Deploy → Clear build cache
+& deploy** on the affected service if auto-deploy doesn't pick it up.
+
+Note: the free plan has 512 MB RAM, which is comfortable up to roughly 10–25M. Very
+large limits (100M) may need a larger instance.
+
 ## Development Commands
 
 ```powershell

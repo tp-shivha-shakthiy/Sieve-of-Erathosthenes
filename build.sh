@@ -11,8 +11,8 @@ if command -v cmake &> /dev/null; then
     cd ../..
 else
     echo "CMake not found, using g++ directly..."
-    g++ -O2 -std=c++17 -o backend/bin/sieve_serial cpp/sieve_serial.cpp
-    g++ -O2 -std=c++17 -fopenmp -o backend/bin/sieve_openmp cpp/sieve_openmp.cpp
+    g++ -O2 -Wall -Wextra -std=c++17 -o backend/bin/sieve_serial cpp/sieve_serial.cpp
+    g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend/bin/sieve_openmp cpp/sieve_openmp.cpp
 fi
 
 echo ""

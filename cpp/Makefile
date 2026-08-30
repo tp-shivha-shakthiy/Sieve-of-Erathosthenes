@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -O2 -std=c++17
+CXXFLAGS = -O2 -Wall -Wextra -std=c++17
 LDFLAGS_SERIAL =
 LDFLAGS_OPENMP = -fopenmp
 

@@ -1,5 +1,7 @@
 # Parallel Sieve of Eratosthenes
 
+> The active API-facing implementation is `cpp/`. For the current reproducible test procedure, measured benchmark table, and complete PADC concept coverage, see [`docs/PADC_ANALYSIS.md`](docs/PADC_ANALYSIS.md).
+
 ## 1. Objective and Description
 
 The objective is to compute all prime numbers up to an upper bound `n` and compare a sequential C++ implementation against a shared-memory OpenMP implementation. The project studies whether a regular, memory-intensive scientific-style computation benefits from multicore execution.

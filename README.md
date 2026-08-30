@@ -16,6 +16,8 @@ cpp/                 C++ serial and OpenMP implementations
 backend/             FastAPI service and compiled binaries
 frontend/            Vite React frontend
 benchmarks/          Repeatable scalability benchmark runner
+tests/               Serial/OpenMP correctness checks
+docs/PADC_ANALYSIS.md Active implementation, experiment, and PADC analysis
 build.bat, build.sh  Build helpers
 start.bat, start.sh  Launch helpers
 ```
@@ -95,3 +97,14 @@ npm --prefix frontend run dev -- --host 127.0.0.1
 ```
 
 The frontend proxies `/api/*` requests to the backend. For example, `http://127.0.0.1:5173/api/system` returns the same metadata as `http://127.0.0.1:8000/system`.
+
+## PADC Verification and Benchmarking
+
+The active PADC implementation is in `cpp/`; it is the source used by the API binaries. Run the correctness suite and repeated strong-scaling experiment after building:
+
+```powershell
+python tests\test_sieves.py
+python benchmarks\run_scalability.py
+```
+
+The benchmark validates known prime counts for `100,000`, `1,000,000`, and `10,000,000`, runs one warm-up and five measured samples at 1, 2, 4, and 8 OpenMP threads, and writes actual local CSV/metadata evidence to `benchmarks/`. See `docs/PADC_ANALYSIS.md` for the algorithm, PCAM/dependency analysis, diagrams, current measured table, and limitations.

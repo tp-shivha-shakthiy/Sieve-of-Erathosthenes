@@ -9,9 +9,17 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="Sieve of Eratosthenes API")
 
+def _cors_origins():
+    origins = ["http://localhost:5173", "http://localhost:3000"]
+    extra = os.environ.get("ALLOWED_ORIGINS")
+    if extra:
+        origins.extend([o.strip() for o in extra.split(",") if o.strip()])
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

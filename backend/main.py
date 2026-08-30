@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import subprocess
 import sys
 from fastapi import FastAPI, HTTPException
@@ -32,6 +33,18 @@ def get_binary(name: str) -> str:
     return path
 
 
+def get_compiler_version() -> str | None:
+    try:
+        completed = subprocess.run(
+            ["g++", "--version"], capture_output=True, text=True, timeout=3
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.splitlines()[0] if completed.stdout else None
+
+
 class SieveRequest(BaseModel):
     limit: int = Field(..., ge=2, le=100_000_000, description="Upper bound for sieve")
     algorithm: str = Field("both", pattern="^(serial|openmp|both)$")
@@ -42,6 +55,19 @@ class SieveRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/system")
+def system():
+    extension = ".exe" if sys.platform == "win32" else ""
+    return {
+        "cpu_count": os.cpu_count(),
+        "architecture": platform.machine() or None,
+        "openmp_available": os.path.isfile(
+            os.path.join(BIN_DIR, f"sieve_openmp{extension}")
+        ),
+        "compiler": get_compiler_version(),
+    }
 
 
 @app.post("/sieve")

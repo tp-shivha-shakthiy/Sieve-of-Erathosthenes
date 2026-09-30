@@ -1,23 +1,27 @@
-# Sieve of Eratosthenes
+# RSA Cryptography Demonstrator
 
-A web interface for comparing serial and OpenMP implementations of the Sieve of Eratosthenes.
+An interactive, educational web application and High-Performance Parallel Computing (PDC) lab demonstrating the complete RSA cryptographic lifecycle powered by real C++ Serial & OpenMP Parallel Sieve of Eratosthenes prime generation.
 
 ## Features
 
-- C++ serial and OpenMP sieve implementations
-- FastAPI backend that executes the native binaries and returns JSON results
-- React observability dashboard with configurable limits, thread counts, charts, prime visualization, and JSON inspection
-- Run Context panel with current settings, run validation, actual in-session history, and machine capability data
+- **Stage 1 — Prime Generation**: Native C++ Serial and OpenMP Parallel Sieve of Eratosthenes with real execution times, speedup calculation ($S = T_{serial} / T_{parallel}$), and candidate elimination step visualizer.
+- **Stage 2 — RSA Key Generation**: Interactive selection of primes $p$ and $q$, step-by-step calculation of modulus $n = p \times q$, Euler's totient $\varphi(n) = (p-1)(q-1)$, coprime public exponent $e$, and modular inverse private exponent $d = e^{-1} \pmod{\varphi(n)}$ via the Extended Euclidean Algorithm.
+- **Stage 3 — Message Encryption**: Plaintext blocking ($M < n$) and public-key modular exponentiation $C = M^e \pmod n$ with complete substituted values.
+- **Stage 4 — Message Decryption**: Private-key modular exponentiation $M = C^d \pmod n$, block decoding, and verified plaintext recovery with integrity checks.
+- **Stage 5 — Workflow Summary**: End-to-end interconnected pipeline tracking state transitions from prime generation to recovered message.
+- **Dedicated Views**:
+  - **PDC Performance Lab**: Thread scaling charts, Amdahl's law insights, and hardware CPU/OpenMP specs.
+  - **Interactive Visualizations**: Animated Sieve grid step-through and full RSA data flow visualizer.
+  - **Educational Guide (About RSA)**: Mathematical proofs, Euler's totient theorem, factoring hardness, and educational vs production RSA disclaimer.
 
 ## Project Structure
 
 ```text
 cpp/                 C++ serial and OpenMP implementations
 backend/             FastAPI service and compiled binaries
-frontend/            Vite React frontend
+frontend/            Vite + React + TypeScript + Recharts + Lucide Icons frontend
 benchmarks/          Repeatable scalability benchmark runner
-tests/               Serial/OpenMP correctness checks
-docs/PADC_ANALYSIS.md Active implementation, experiment, and PADC analysis
+tests/               Serial/OpenMP and RSA correctness test suites
 build.bat, build.sh  Build helpers
 start.bat, start.sh  Launch helpers
 ```
@@ -40,8 +44,8 @@ npm --prefix frontend ci
 Build the native sieve executables:
 
 ```powershell
-g++ -O2 -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
-g++ -O2 -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
+g++ -O2 -Wall -Wextra -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
+g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
 ```
 
 Start both services:
@@ -131,8 +135,8 @@ large limits (100M) may need a larger instance.
 
 ```powershell
 # Rebuild after changing cpp/sieve_serial.cpp or cpp/sieve_openmp.cpp
-g++ -O2 -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
-g++ -O2 -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
+g++ -O2 -Wall -Wextra -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
+g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
 
 # Run services separately
 python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
@@ -150,4 +154,4 @@ python tests\test_sieves.py
 python benchmarks\run_scalability.py
 ```
 
-The benchmark validates known prime counts for `100,000`, `1,000,000`, and `10,000,000`, runs one warm-up and five measured samples at 1, 2, 4, and 8 OpenMP threads, and writes actual local CSV/metadata evidence to `benchmarks/`. See `docs/PADC_ANALYSIS.md` for the algorithm, PCAM/dependency analysis, diagrams, current measured table, and limitations.
+The benchmark validates known prime counts for `100,000`, `1,000,000`, and `10,000,000`, runs one warm-up and seven measured samples at 1, 2, 4, and 8 OpenMP threads, and writes the canonical CSV, raw trials, metadata, and generated Markdown table to `results/`. See `docs/PADC_ANALYSIS.md` for the algorithm, PCAM/dependency analysis, diagrams, and limitations.

@@ -1,0 +1,27 @@
+{
+  "timestamp_utc": "2026-08-31T10:48:23.371753+00:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 189 Stepping 1, GenuineIntel",
+  "logical_cpu_count": 8,
+  "compiler": "g++ (tdm64-1) 9.2.0",
+  "optimization_flags": "-O2 -Wall -Wextra -std=c++17; OpenMP additionally uses -fopenmp",
+  "timed_region": "allocation, initialization, base-prime generation where applicable, marking, and counting; JSON output excluded",
+  "timing_units": "seconds",
+  "statistic": "median of 7 measured samples after one warm-up",
+  "in_program_timing_repetitions": 20,
+  "thread_counts": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "limits": [
+    100000,
+    1000000,
+    10000000,
+    100000000
+  ],
+  "omp_num_threads": null,
+  "omp_proc_bind": null,
+  "omp_places": null
+}

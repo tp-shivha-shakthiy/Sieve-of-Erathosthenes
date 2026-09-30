@@ -17,6 +17,9 @@ __pycache__/
 benchmarks/scalability_results.csv
 benchmarks/scalability_metadata.json
 
+# Private presentation and viva preparation notes
+PROJECT_EXPERIMENT_NOTES.md
+
 # IDE
 .vscode/
 .idea/

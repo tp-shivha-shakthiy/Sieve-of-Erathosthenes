@@ -10,6 +10,7 @@ interface Props {
 }
 
 const PRESETS = [100, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
+const THREAD_PRESETS = [1, 2, 4, 8];
 
 export default function SieveControls({
   onRun,
@@ -65,7 +66,7 @@ export default function SieveControls({
       </label>
 
       {(algorithm === "openmp" || algorithm === "both") && (
-        <label className="control-field">
+        <div className="control-field">
           <span className="control-label">Threads</span>
           <input
             type="number"
@@ -74,8 +75,21 @@ export default function SieveControls({
             max={64}
             onChange={(e) => onNumThreadsChange(Number(e.target.value))}
             className="control-input thread-input"
+            aria-label="OpenMP thread count"
           />
-        </label>
+          <div className="preset-list thread-presets" aria-label="Thread presets">
+            {THREAD_PRESETS.map((threads) => (
+              <button
+                key={threads}
+                type="button"
+                onClick={() => onNumThreadsChange(threads)}
+                className={`preset-button ${numThreads === threads ? "active" : ""}`}
+              >
+                {threads}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <button

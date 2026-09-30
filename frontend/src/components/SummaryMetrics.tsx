@@ -16,12 +16,13 @@ export default function SummaryMetrics({ response }: Props) {
       : speedup < 0.99
         ? "Serial is faster"
         : "Similar performance";
+  const efficiency = openmp?.efficiency;
 
   const metrics = [
     { label: "Input Size (N)", value: primary?.limit.toLocaleString() ?? "-", detail: primary ? `Range: [2, ${primary.limit.toLocaleString()}]` : "Awaiting a run", icon: "#", tone: "blue" },
-    { label: "Threads", value: openmp?.num_threads?.toString() ?? "-", detail: openmp ? "OpenMP Threads" : "Not used in serial mode", icon: "▣", tone: "purple" },
+    { label: "Threads", value: (openmp?.actual_threads ?? openmp?.num_threads)?.toString() ?? "-", detail: openmp ? "Observed OpenMP Threads" : "Not used in serial mode", icon: "▣", tone: "purple" },
     { label: "Primes Found", value: primary?.prime_count.toLocaleString() ?? "-", detail: primary ? "Total Prime Numbers" : "Awaiting a run", icon: "✓", tone: "green" },
-    { label: "Speedup (OpenMP)", value: speedup === undefined ? "-" : `${speedup.toFixed(2)}x`, detail: speedupContext, icon: "↗", tone: speedup !== undefined && speedup > 1 ? "green" : "amber" },
+    { label: "Speedup (OpenMP)", value: speedup === undefined ? "-" : `${speedup.toFixed(6)}x`, detail: efficiency === undefined ? speedupContext : `${speedupContext}; efficiency ${(efficiency * 100).toFixed(1)}%`, icon: "↗", tone: speedup !== undefined && speedup > 1 ? "green" : "amber" },
   ];
 
   return (

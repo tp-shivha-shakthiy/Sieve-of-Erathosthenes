@@ -34,7 +34,10 @@ SERIAL-SIEVE(n)
 OPENMP-SEGMENTED-SIEVE(n, threads)
   base_primes <- SERIAL-SIEVE(floor(sqrt(n)))
   partition [2, n] into fixed-size contiguous blocks
-  #pragma omp parallel for schedule(static) reduction(+:prime_count)
+  #pragma omp parallel reduction(+:prime_count)
+    #pragma omp single
+      record observed team size
+    #pragma omp for schedule(static)
   for every block assigned to a worker
     for every p in shared read-only base_primes
       mark multiples of p that fall inside this block
@@ -49,14 +52,14 @@ OPENMP-SEGMENTED-SIEVE(n, threads)
 | Partitioning | Divide the regular number domain `[2, n]` into 32,768-element blocks. | Each block has an independent output region and can be sized for cache locality. |
 | Communication | Build `base_primes` up to `sqrt(n)` once, then share it read-only. | Workers need the same small set of prime factors; no worker-to-worker composite updates are needed. |
 | Agglomeration | Keep marking and counting for one block together in the same iteration. | Avoids fine-grained tasks and combines enough work to amortize OpenMP scheduling overhead. |
-| Mapping | Use `parallel for schedule(static)` over blocks. | Blocks have equal size, static mapping is reproducible, and each thread writes only its assigned ranges. |
+| Mapping | Use `omp for schedule(static)` inside an OpenMP parallel region over blocks. | Blocks have equal size, static mapping is reproducible, and each thread writes only its assigned ranges. |
 
-This replaces a factor-based mapping, where several threads can mark the same composite. The current range ownership has no concurrent writes to an element, so it is valid C++ memory behavior without atomics. The implicit barrier at the end of `parallel for` completes the marking/counting phase before JSON output. `base_primes` and `is_prime` are shared; loop indices, block bounds, and `local_count` are private; `prime_count` uses an OpenMP reduction.
+This replaces a factor-based mapping, where several threads can mark the same composite. The current range ownership has no concurrent writes to an element, so it is valid C++ memory behavior without atomics. The implicit barriers after `single` and `for` establish phase ordering before JSON output. `base_primes` and `is_prime` are shared; loop indices, block bounds, and `local_count` are private; `prime_count` uses an OpenMP reduction.
 
 ## 4. OpenMP Concepts Demonstrated
 
 - **Execution model:** a master thread prepares base primes, forks a team for the parallel loop, then joins at the implicit barrier.
-- **Directives:** `#pragma omp parallel for`, `schedule(static)`, and `reduction(+:prime_count)`.
+- **Directives:** `#pragma omp parallel`, `#pragma omp single`, `#pragma omp for schedule(static)`, and `reduction(+:prime_count)`.
 - **Data scoping:** shared read-only base-prime list and disjoint shared output array; private loop/block variables; reduction accumulator.
 - **Synchronization:** no explicit lock, critical section, or atomic operation is necessary because blocks do not overlap. The worksharing loop has an implicit barrier.
 - **Run-time library:** `omp_set_num_threads` selects the requested team size. Thread count is validated from 1 to 64.
@@ -92,7 +95,7 @@ Run the controlled experiment after building:
 python benchmarks/run_scalability.py
 ```
 
-It performs one warm-up and five measured repetitions for `n = 100,000`, `1,000,000`, and `10,000,000`, with 1, 2, 4, and 8 OpenMP threads. It checks known prime counts and writes mean time, standard deviation, speedup, efficiency, and machine metadata to `benchmarks/`. Include the generated CSV and metadata in the final submission, and state compiler, optimization flags, CPU model, logical cores, OS, and whether other workloads were running.
+It performs one warm-up and seven measured repetitions for `n = 100,000`, `1,000,000`, and `10,000,000`, with 1, 2, 4, and 8 OpenMP threads. It checks known prime counts and writes canonical median-time CSV, raw trials, derived metrics, and machine metadata to `results/`. Include the generated bundle in the final submission, and state compiler, optimization flags, CPU model, logical cores, OS, and whether other workloads were running.
 
 ## 7. Architecture and Scope
 
@@ -118,7 +121,7 @@ Use a measurement plan before optimization:
 | Are all threads active and balanced? | OpenMP runtime timings; trace with Score-P/Scalasca where available. |
 | Is speedup limited by cache or memory bandwidth? | Hardware-counter profiling (cache misses, bandwidth, cycles) and a roofline-style discussion. |
 | What is the time ordering of parallel events? | Event trace/timeline, not only aggregate profiling. |
-| Does an optimization reliably help? | Repeat the same benchmark, compare mean and standard deviation, and retain only reproducible improvements. |
+| Does an optimization reliably help? | Repeat the same benchmark, compare the canonical median and standard deviation, and retain only reproducible improvements. |
 | Does energy change with thread count? | Energy Analyzer or platform energy counters if the laboratory provides them. |
 
 MPI-P, Score-P, Scalasca, and Periscope are appropriate for the proposed MPI extension or a supported lab environment; do not fabricate output from tools that were not run.

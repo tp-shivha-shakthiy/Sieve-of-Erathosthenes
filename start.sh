@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
 echo "Starting FastAPI backend on :8000 ..."
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
+cd "$ROOT/backend"
+python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload &
 BACKEND_PID=$!
-cd ..
+cd "$ROOT"
 
 echo "Starting React dev server on :5173 ..."
-cd frontend
-npm run dev &
+cd "$ROOT/frontend"
+npm run dev -- --host 127.0.0.1 &
 FRONTEND_PID=$!
-cd ..
+cd "$ROOT"
 
 echo ""
 echo "Backend:  http://localhost:8000"

@@ -1,3 +1,5 @@
+> **Legacy snapshot:** this standalone submission uses a different CLI, segmented implementation, timer/repetition policy, and recorded results. It is not used by the API, frontend, active `cpp/` sources, or canonical `results/benchmark.csv`. Do not compare its values with the active benchmark bundle.
+
 ## Build in Windows PowerShell (MinGW)
 
 ```powershell

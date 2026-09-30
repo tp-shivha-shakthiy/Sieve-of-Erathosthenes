@@ -1,21 +1,20 @@
 #include <algorithm>
-#include <iostream>
-#include <cstdlib>
-#include <vector>
-#include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <omp.h>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
-constexpr long long kMaxLimit = 100000000;
-constexpr long long kBlockSize = 32768;
+constexpr int kMaxLimit = 100000000;
+constexpr int kDefaultBlockSize = 10000;
+constexpr const char* kDefaultSchedule = "static";
 
-long long parse_limit(const char* value) {
+int parse_limit(const char* value) {
     size_t parsed = 0;
-    const long long limit = std::stoll(value, &parsed);
+    const int limit = std::stoi(value, &parsed);
     if (value[parsed] != '\0' || limit < 2 || limit > kMaxLimit) {
         throw std::invalid_argument("limit must be an integer between 2 and 100000000");
     }
@@ -39,110 +38,272 @@ int parse_repetitions(const char* value) {
     }
     return repetitions;
 }
+
+int parse_block_size(const char* value) {
+    size_t parsed = 0;
+    const int block_size = std::stoi(value, &parsed);
+    if (value[parsed] != '\0' || block_size < 1 || block_size > kMaxLimit) {
+        throw std::invalid_argument("block_size must be an integer between 1 and 100000000");
+    }
+    return block_size;
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: sieve_openmp <limit> [num_threads=4] [return_primes=1] [timing_repetitions=1]" << std::endl;
-        return 1;
+std::string parse_schedule(const char* value) {
+    std::string schedule(value);
+    if (schedule == "static" || schedule == "dynamic" || schedule == "guided") {
+        return schedule;
     }
+    throw std::invalid_argument("schedule must be one of: static, dynamic, guided");
+}
 
-    long long limit;
-    int num_threads;
-    int timing_repetitions;
-    try {
-        limit = parse_limit(argv[1]);
-        num_threads = (argc >= 3) ? parse_threads(argv[2]) : 4;
-        timing_repetitions = (argc >= 5) ? parse_repetitions(argv[4]) : 1;
-    } catch (const std::exception& error) {
-        std::cerr << "Invalid argument: " << error.what() << std::endl;
-        return 1;
+std::string parse_strategy(const char* value) {
+    std::string strategy(value);
+    if (strategy == "block" || strategy == "naive") {
+        return strategy;
     }
-    bool return_primes = (argc >= 4) ? (std::string(argv[3]) == "1") : true;
+    throw std::invalid_argument("strategy must be one of: block, naive");
+}
 
-    omp_set_num_threads(num_threads);
+std::vector<int> generateBasePrimes(int n) {
+    const int root = static_cast<int>(std::sqrt(n));
+    std::vector<char> baseIsPrime(root + 1, true);
+    baseIsPrime[0] = false;
+    baseIsPrime[1] = false;
+    std::vector<int> basePrimes;
 
-    std::vector<char> is_prime;
-    long long prime_count = 0;
-    int actual_threads = 0;
-    const double start = omp_get_wtime();
-    for (int repetition = 0; repetition < timing_repetitions; ++repetition) {
-        const long long sqrt_limit = static_cast<long long>(std::sqrt(static_cast<double>(limit)));
-
-        // Communication phase: build a small, read-only list shared by every worker.
-        std::vector<char> base_is_prime(sqrt_limit + 1, 1);
-        base_is_prime[0] = base_is_prime[1] = 0;
-        std::vector<long long> base_primes;
-        for (long long p = 2; p <= sqrt_limit; p++) {
-            if (base_is_prime[p]) {
-                base_primes.push_back(p);
-                for (long long j = p * p; j <= sqrt_limit; j += p) {
-                    base_is_prime[j] = 0;
+    for (int p = 2; p <= root; ++p) {
+        if (baseIsPrime[p]) {
+            basePrimes.push_back(p);
+            if (p <= root / p) {
+                for (int multiple = p * p; multiple <= root; multiple += p) {
+                    baseIsPrime[multiple] = false;
                 }
             }
         }
+    }
+    return basePrimes;
+}
 
-        is_prime.assign(limit + 1, 1);
-        is_prime[0] = is_prime[1] = 0;
-        const long long block_count = (limit - 1 + kBlockSize - 1) / kBlockSize;
-        prime_count = 0;
+std::vector<char> parallelSieve(int n, int threads, int block_size, const std::string& schedule,
+                                long long& primeCount, int& actualThreads, double& parallelTime) {
+    // The base primes are created first because all blocks depend on them.
+    const std::vector<int> basePrimes = generateBasePrimes(n);
+    std::vector<char> isPrime(n + 1, true);
+    isPrime[0] = false;
+    isPrime[1] = false;
+    const int blockCount = (n - 1 + block_size - 1) / block_size;
 
-        // Partition the regular number domain into disjoint blocks. Static mapping has
-        // no write sharing, and each thread only reads the shared base-prime list.
-        #pragma omp parallel reduction(+:prime_count)
+    omp_set_num_threads(threads);
+    const double startTime = omp_get_wtime();
+    actualThreads = 0;
+
+    // Every iteration owns a separate block, eliminating write-write races.
+    if (schedule == "static") {
+        #pragma omp parallel default(none) shared(n, blockCount, block_size, basePrimes, isPrime, actualThreads)
         {
             #pragma omp single
-            actual_threads = omp_get_num_threads();
+            actualThreads = omp_get_num_threads();
 
             #pragma omp for schedule(static)
-            for (long long block = 0; block < block_count; block++) {
-                const long long block_start = 2 + block * kBlockSize;
-                const long long block_end = std::min(limit, block_start + kBlockSize - 1);
-                long long local_count = 0;
+            for (int block = 0; block < blockCount; ++block) {
+                const int low = 2 + block * block_size;
+                const int high = std::min(n, low + block_size - 1);
 
-                for (long long p : base_primes) {
-                    // max(p*p, ceil(block_start / p) * p) stays within this owned block.
-                    long long first_multiple = ((block_start + p - 1) / p) * p;
-                    if (first_multiple < p * p) first_multiple = p * p;
-                    for (long long j = first_multiple; j <= block_end; j += p) {
-                        is_prime[j] = 0;
+                for (int p : basePrimes) {
+                    int firstMultiple = ((low + p - 1) / p) * p;
+                    if (p <= n / p) {
+                        firstMultiple = std::max(firstMultiple, p * p);
+                    }
+                    for (int multiple = firstMultiple; multiple <= high; multiple += p) {
+                        isPrime[multiple] = false;
                     }
                 }
+            }
+        }
+    } else if (schedule == "dynamic") {
+        #pragma omp parallel default(none) shared(n, blockCount, block_size, basePrimes, isPrime, actualThreads)
+        {
+            #pragma omp single
+            actualThreads = omp_get_num_threads();
 
-                for (long long i = block_start; i <= block_end; i++) {
-                    local_count += is_prime[i];
+            #pragma omp for schedule(dynamic)
+            for (int block = 0; block < blockCount; ++block) {
+                const int low = 2 + block * block_size;
+                const int high = std::min(n, low + block_size - 1);
+
+                for (int p : basePrimes) {
+                    int firstMultiple = ((low + p - 1) / p) * p;
+                    if (p <= n / p) {
+                        firstMultiple = std::max(firstMultiple, p * p);
+                    }
+                    for (int multiple = firstMultiple; multiple <= high; multiple += p) {
+                        isPrime[multiple] = false;
+                    }
                 }
-                prime_count += local_count;
+            }
+        }
+    } else {
+        #pragma omp parallel default(none) shared(n, blockCount, block_size, basePrimes, isPrime, actualThreads)
+        {
+            #pragma omp single
+            actualThreads = omp_get_num_threads();
+
+            #pragma omp for schedule(guided)
+            for (int block = 0; block < blockCount; ++block) {
+                const int low = 2 + block * block_size;
+                const int high = std::min(n, low + block_size - 1);
+
+                for (int p : basePrimes) {
+                    int firstMultiple = ((low + p - 1) / p) * p;
+                    if (p <= n / p) {
+                        firstMultiple = std::max(firstMultiple, p * p);
+                    }
+                    for (int multiple = firstMultiple; multiple <= high; multiple += p) {
+                        isPrime[multiple] = false;
+                    }
+                }
             }
         }
     }
 
-    const double elapsed_ms = ((omp_get_wtime() - start) * 1000.0) / timing_repetitions;
+    primeCount = 0;
+    if (schedule == "static") {
+        #pragma omp parallel for default(none) shared(n, isPrime) reduction(+:primeCount) schedule(static)
+        for (int number = 2; number <= n; ++number) {
+            if (isPrime[number]) {
+                ++primeCount;
+            }
+        }
+    } else if (schedule == "dynamic") {
+        #pragma omp parallel for default(none) shared(n, isPrime) reduction(+:primeCount) schedule(dynamic)
+        for (int number = 2; number <= n; ++number) {
+            if (isPrime[number]) {
+                ++primeCount;
+            }
+        }
+    } else {
+        #pragma omp parallel for default(none) shared(n, isPrime) reduction(+:primeCount) schedule(guided)
+        for (int number = 2; number <= n; ++number) {
+            if (isPrime[number]) {
+                ++primeCount;
+            }
+        }
+    }
 
-    std::cout << std::setprecision(12);
-    std::cout << "{";
-    std::cout << "\"algorithm\":\"openmp\",";
-    std::cout << "\"limit\":" << limit << ",";
-    std::cout << "\"num_threads\":" << num_threads << ",";
-    std::cout << "\"actual_threads\":" << actual_threads << ",";
-    std::cout << "\"prime_count\":" << prime_count << ",";
-    std::cout << "\"execution_time_ms\":" << elapsed_ms << ",";
+    parallelTime = omp_get_wtime() - startTime;
+    return isPrime;
+}
 
+std::vector<char> parallelSieveNaive(int n, int threads, const std::string& schedule,
+                                    long long& primeCount, int& actualThreads, double& parallelTime) {
+    const std::vector<int> basePrimes = generateBasePrimes(n);
+    std::vector<char> isPrime(n + 1, true);
+    isPrime[0] = false;
+    isPrime[1] = false;
+
+    omp_set_num_threads(threads);
+    const double startTime = omp_get_wtime();
+    actualThreads = 0;
+
+    #pragma omp parallel default(none) shared(basePrimes, isPrime, actualThreads, n)
+    {
+        #pragma omp single
+        actualThreads = omp_get_num_threads();
+
+        #pragma omp for schedule(static)
+        for (int primeIndex = 0; primeIndex < static_cast<int>(basePrimes.size()); ++primeIndex) {
+            const int p = basePrimes[primeIndex];
+            for (int multiple = p * p; multiple <= n; multiple += p) {
+                #pragma omp critical
+                {
+                    isPrime[multiple] = false;
+                }
+            }
+        }
+    }
+
+    primeCount = 0;
+    #pragma omp parallel for default(none) shared(n, isPrime) reduction(+:primeCount) schedule(static)
+    for (int number = 2; number <= n; ++number) {
+        if (isPrime[number]) {
+            ++primeCount;
+        }
+    }
+
+    parallelTime = omp_get_wtime() - startTime;
+    return isPrime;
+}
+
+std::vector<char> executeOpenMPStrategy(int n, int threads, int block_size, const std::string& schedule,
+                                       const std::string& strategy, long long& primeCount,
+                                       int& actualThreads, double& parallelTime) {
+    if (strategy == "naive") {
+        return parallelSieveNaive(n, threads, schedule, primeCount, actualThreads, parallelTime);
+    }
+    return parallelSieve(n, threads, block_size, schedule, primeCount, actualThreads, parallelTime);
+}
+
+void print_json(int limit, int threads, int actual_threads, long long prime_count,
+                double elapsed_ms, int repetitions, int block_size, const std::string& schedule,
+                const std::string& strategy, const std::vector<char>& is_prime, bool return_primes) {
+    std::cout << std::setprecision(12) << "{"
+              << "\"algorithm\":\"openmp\","
+              << "\"limit\":" << limit << ","
+              << "\"num_threads\":" << threads << ","
+              << "\"actual_threads\":" << actual_threads << ","
+              << "\"block_size\":" << block_size << ","
+              << "\"schedule\":\"" << schedule << "\","
+              << "\"strategy\":\"" << strategy << "\","
+              << "\"prime_count\":" << prime_count << ","
+              << "\"execution_time_ms\":" << elapsed_ms << ","
+              << "\"average_per_run_ms\":" << elapsed_ms << ","
+              << "\"timing_repetitions\":" << repetitions << ","
+              << "\"primes\":[";
     if (return_primes && limit <= 1000000) {
-        std::cout << "\"primes\":[";
         bool first = true;
-        for (long long i = 2; i <= limit; i++) {
-            if (is_prime[i]) {
+        for (int number = 2; number <= limit; ++number) {
+            if (is_prime[number]) {
                 if (!first) std::cout << ",";
-                std::cout << i;
+                std::cout << number;
                 first = false;
             }
         }
-        std::cout << "]";
-    } else {
-        std::cout << "\"primes\":[]";
+    }
+    std::cout << "]}" << std::endl;
+}
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2 || argc > 8) {
+        std::cerr << "Usage: sieve_openmp <limit> [num_threads=4] [return_primes=1] [timing_repetitions=1] [block_size=10000] [schedule=static] [strategy=block]\n";
+        return 1;
     }
 
-    std::cout << "}" << std::endl;
+    try {
+        const int limit = parse_limit(argv[1]);
+        const int threads = argc >= 3 ? parse_threads(argv[2]) : 4;
+        const bool return_primes = argc >= 4 ? std::string(argv[3]) == "1" : true;
+        const int repetitions = argc >= 5 ? parse_repetitions(argv[4]) : 1;
+        const int block_size = argc >= 6 ? parse_block_size(argv[5]) : kDefaultBlockSize;
+        const std::string schedule = argc >= 7 ? parse_schedule(argv[6]) : kDefaultSchedule;
+        const std::string strategy = argc >= 8 ? parse_strategy(argv[7]) : "block";
+        std::vector<char> is_prime;
+        long long prime_count = 0;
+        int actual_threads = 0;
+        double total_time = 0.0;
+
+        for (int run = 0; run < repetitions; ++run) {
+            double run_time = 0.0;
+            is_prime = executeOpenMPStrategy(limit, threads, block_size, schedule, strategy,
+                                            prime_count, actual_threads, run_time);
+            total_time += run_time;
+        }
+
+        print_json(limit, threads, actual_threads, prime_count, total_time * 1000.0 / repetitions,
+                   repetitions, block_size, schedule, strategy, is_prime, return_primes);
+    } catch (const std::exception& error) {
+        std::cerr << "Invalid argument: " << error.what() << "\n";
+        return 1;
+    }
     return 0;
 }

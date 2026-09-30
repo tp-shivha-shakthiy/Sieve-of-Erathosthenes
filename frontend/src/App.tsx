@@ -1,23 +1,42 @@
-import { useEffect, useState } from "react";
-import SieveControls from "./components/SieveControls";
-import PrimeGrid from "./components/PrimeGrid";
-import PerformanceChart from "./components/PerformanceChart";
-import SpeedupChart from "./components/SpeedupChart";
-import SummaryMetrics from "./components/SummaryMetrics";
-import JsonViewer from "./components/JsonViewer";
+import React, { useEffect, useState, useCallback } from "react";
+import { Sidebar, NavTab } from "./components/Sidebar";
+import { TopHeader } from "./components/TopHeader";
+import { PrimeGenCard } from "./components/PrimeGenCard";
+import { KeyGenCard } from "./components/KeyGenCard";
+import { EncryptionCard } from "./components/EncryptionCard";
+import { DecryptionCard } from "./components/DecryptionCard";
+import { WorkflowSummaryCard } from "./components/WorkflowSummaryCard";
+import { PerformanceView } from "./components/PerformanceView";
+import { VisualisationView } from "./components/VisualisationView";
+import { AboutView } from "./components/AboutView";
+import {
+  generateRSAKeys,
+  encryptMessage,
+  decryptMessage,
+  KeyGenResult,
+  EncryptionResult,
+  DecryptionResult,
+} from "./utils/rsaMath";
 
 export interface SieveResult {
   algorithm: string;
   limit: number;
   prime_count: number;
   execution_time_ms: number;
+  average_per_run_ms?: number;
   num_threads?: number;
+  actual_threads?: number;
   primes: number[];
   speedup?: number;
+  efficiency?: number;
 }
 
 export interface SieveResponse {
   results: SieveResult[];
+  timing?: {
+    serial_execution_time_ms?: number;
+    parallel_execution_time_ms?: number;
+  };
   parameters: {
     limit: number;
     algorithm: string;
@@ -26,148 +45,348 @@ export interface SieveResponse {
   };
 }
 
-interface SystemInfo {
+export interface SystemInfo {
   cpu_count: number | null;
   architecture: string | null;
   openmp_available: boolean;
   compiler: string | null;
 }
 
-interface RunHistoryEntry {
-  timestamp: string;
-  durationMs: number;
-  response: SieveResponse;
-}
-
 const API_BASE: string = (import.meta.env.VITE_API_URL as string | undefined) || "/api";
+
 export default function App() {
-  const [response, setResponse] = useState<SieveResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [limit, setLimit] = useState(1000);
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<NavTab>("home");
+
+  // System Specs
+  const [system, setSystem] = useState<SystemInfo | null>(null);
+
+  // Stage 1: Prime Generation State
+  const [limit, setLimit] = useState(1000000);
   const [algorithm, setAlgorithm] = useState("both");
   const [numThreads, setNumThreads] = useState(4);
-  const [system, setSystem] = useState<SystemInfo | null>(null);
-  const [history, setHistory] = useState<RunHistoryEntry[]>([]);
-  const [lastRun, setLastRun] = useState<{ timestamp: string; durationMs: number } | null>(null);
+  const [loadingPrimes, setLoadingPrimes] = useState(false);
+  const [sieveResponse, setSieveResponse] = useState<SieveResponse | null>(null);
+  const [availablePrimes, setAvailablePrimes] = useState<number[]>([]);
 
-  const navigateTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  // Stage 2: Key Generation State
+  const [primeP, setPrimeP] = useState("9973");
+  const [primeQ, setPrimeQ] = useState("9967");
+  const [keys, setKeys] = useState<KeyGenResult | null>(null);
+  const [keyGenError, setKeyGenError] = useState<string | null>(null);
 
+  // Stage 3: Encryption State
+  const [message, setMessage] = useState("Hello IIIT Kottayam");
+  const [encryptionResult, setEncryptionResult] = useState<EncryptionResult | null>(null);
+  const [encryptError, setEncryptError] = useState<string | null>(null);
+
+  // Stage 4: Decryption State
+  const [ciphertextInput, setCiphertextInput] = useState("");
+  const [decryptionResult, setDecryptionResult] = useState<DecryptionResult | null>(null);
+  const [decryptError, setDecryptError] = useState<string | null>(null);
+
+  // Fetch System Information
   useEffect(() => {
     fetch(`${API_BASE}/system`)
-      .then((res) => res.ok ? res.json() : null)
+      .then((res) => (res.ok ? res.json() : null))
       .then((info: SystemInfo | null) => setSystem(info))
       .catch(() => setSystem(null));
   }, []);
 
-  const runSieve = async (
-    limit: number,
-    algorithm: string,
-    numThreads: number
-  ) => {
-    const startedAt = performance.now();
-    setLoading(true);
-    setError(null);
+  // Run Backend Sieve
+  const runSieve = async (targetLimit = limit, targetAlgo = algorithm, targetThreads = numThreads) => {
+    setLoadingPrimes(true);
     try {
       const res = await fetch(`${API_BASE}/sieve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          limit,
-          algorithm,
-          num_threads: numThreads,
-          return_primes: limit <= 100000,
+          limit: targetLimit,
+          algorithm: targetAlgo,
+          num_threads: targetThreads,
+          return_primes: targetLimit <= 1000000,
         }),
       });
+
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.detail || "Request failed");
+        const err = await res.json();
+        throw new Error(err.detail || "Prime generation failed");
       }
-      const nextResponse = await res.json() as SieveResponse;
-      setResponse(nextResponse);
-      const runDetails = {
-        timestamp: new Date().toLocaleTimeString(),
-        durationMs: Math.round(performance.now() - startedAt),
-      };
-      setLastRun(runDetails);
-      setHistory((currentHistory) => [
-        { ...runDetails, response: nextResponse },
-        ...currentHistory,
-      ].slice(0, 5));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+
+      const data = (await res.json()) as SieveResponse;
+      setSieveResponse(data);
+
+      // Extract primes if available
+      const primeArr = data.results.find((r) => r.primes && r.primes.length > 0)?.primes || [];
+      if (primeArr.length > 0) {
+        setAvailablePrimes(primeArr);
+        // If current primes not set, pick two large candidates from end of list
+        if (primeArr.length >= 2) {
+          const lastPrime = primeArr[primeArr.length - 1];
+          const secondLast = primeArr[primeArr.length - 2];
+          setPrimeP(lastPrime.toString());
+          setPrimeQ(secondLast.toString());
+        }
+      }
+    } catch (e) {
+      console.error("Sieve error:", e);
     } finally {
-      setLoading(false);
+      setLoadingPrimes(false);
     }
   };
 
-  const copyResults = async () => {
-    if (!response) return;
-    await navigator.clipboard.writeText(JSON.stringify(response, null, 2));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+  // Generate Initial RSA Keys on Mount or change
+  const handleGenerateKeys = useCallback(() => {
+    setKeyGenError(null);
+    try {
+      const p = BigInt(primeP.trim());
+      const q = BigInt(primeQ.trim());
+
+      if (p === q) {
+        throw new Error("Primes p and q must be distinct (p ≠ q).");
+      }
+      if (p < 2n || q < 2n) {
+        throw new Error("p and q must be prime numbers greater than 1.");
+      }
+
+      const res = generateRSAKeys(p, q);
+      setKeys(res);
+
+      // Invalidate dependent encryption & decryption results
+      setEncryptionResult(null);
+      setCiphertextInput("");
+      setDecryptionResult(null);
+    } catch (e: unknown) {
+      setKeyGenError(e instanceof Error ? e.message : "Key generation failed.");
+      setKeys(null);
+      setEncryptionResult(null);
+      setCiphertextInput("");
+      setDecryptionResult(null);
+    }
+  }, [primeP, primeQ]);
+
+  // Initial calculation on first load
+  useEffect(() => {
+    handleGenerateKeys();
+  }, []);
+
+  // Handle Prime Changes (State Invalidation)
+  const handlePrimePChange = (val: string) => {
+    setPrimeP(val);
+    setKeys(null);
+    setEncryptionResult(null);
+    setCiphertextInput("");
+    setDecryptionResult(null);
   };
 
-  const serial = response?.results.find((result) => result.algorithm === "serial");
-  const openmp = response?.results.find((result) => result.algorithm === "openmp");
-  const speedup = openmp?.speedup;
-  const validation = serial && openmp
-    ? serial.prime_count === openmp.prime_count ? "Counts match" : "Count mismatch"
-    : response ? "Single result" : "Awaiting run";
-  const fastest = response ? response.results.reduce((best, result) => result.execution_time_ms < best.execution_time_ms ? result : best) : null;
+  const handlePrimeQChange = (val: string) => {
+    setPrimeQ(val);
+    setKeys(null);
+    setEncryptionResult(null);
+    setCiphertextInput("");
+    setDecryptionResult(null);
+  };
+
+  // Encrypt Message Handler
+  const handleEncrypt = () => {
+    if (!keys) return;
+    setEncryptError(null);
+    try {
+      const enc = encryptMessage(message, keys.e, keys.n);
+      setEncryptionResult(enc);
+      setCiphertextInput(enc.ciphertextFormatted);
+      // Invalidate prior decryption result when re-encrypting
+      setDecryptionResult(null);
+    } catch (e: unknown) {
+      setEncryptError(e instanceof Error ? e.message : "Encryption failed.");
+    }
+  };
+
+  // Plaintext Change Handler (State Invalidation)
+  const handleMessageChange = (val: string) => {
+    setMessage(val);
+    setEncryptionResult(null);
+    setCiphertextInput("");
+    setDecryptionResult(null);
+  };
+
+  // Decrypt Message Handler
+  const handleDecrypt = () => {
+    if (!keys) return;
+    setDecryptError(null);
+    try {
+      const dec = decryptMessage(ciphertextInput, keys.d, keys.n, message);
+      setDecryptionResult(dec);
+    } catch (e: unknown) {
+      setDecryptError(e instanceof Error ? e.message : "Decryption failed.");
+    }
+  };
+
+  const handleNavigateStage = (stageId: string) => {
+    if (stageId === "home") {
+      setActiveTab("home");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setActiveTab("home");
+      setTimeout(() => {
+        document.getElementById(stageId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  };
+
+  // Run Multi-thread Benchmark for Performance View
+  const handleRunMultiThreadBenchmark = async (benchLimit: number) => {
+    await runSieve(benchLimit, "both", 4);
+  };
 
   return (
-    <>
-      <header className="topbar">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">✣</span><span>Sieve of Eratosthenes</span></div>
-        <div className="utility-icons">
-          <button className="utility-button" type="button" onClick={() => navigateTo("overview")} aria-label="Go to overview">⌂</button>
-          <button className="utility-button" type="button" onClick={() => navigateTo("performance")} aria-label="Go to performance">◫</button>
-          <button className="utility-button" type="button" onClick={() => navigateTo("prime-grid")} aria-label="Go to prime grid">▦</button>
-          <button className="utility-button" type="button" onClick={() => navigateTo("raw-results")} aria-label="Go to raw results">⌘</button>
-        </div>
-      </header>
-      <aside className="context-sidebar" aria-label="Run context">
-        <section className="context-section"><h2>Run Context</h2><div className="context-row"><span>Limit</span><strong>{limit.toLocaleString()}</strong></div><div className="context-row"><span>Algorithm</span><strong>{algorithm === "both" ? "Compare" : algorithm}</strong></div><div className="context-row"><span>Threads</span><strong>{algorithm === "serial" ? "-" : numThreads}</strong></div><div className="context-row"><span>Status</span><strong className={error ? "status-error" : loading ? "status-running" : response ? "status-complete" : ""}>{error ? "Error" : loading ? "Running" : response ? "Complete" : "Idle"}</strong></div></section>
-        <section className="context-section"><h2>Latest Run</h2><div className="context-row"><span>Time</span><strong>{lastRun?.timestamp ?? "-"}</strong></div><div className="context-row"><span>Duration</span><strong>{lastRun ? `${lastRun.durationMs} ms` : "-"}</strong></div><div className="context-row"><span>Validation</span><strong className={validation === "Counts match" ? "status-complete" : validation === "Count mismatch" ? "status-error" : ""}>{validation}</strong></div><div className="context-row"><span>Fastest</span><strong>{fastest?.algorithm ?? "-"}</strong></div><div className="context-row"><span>Speedup</span><strong>{speedup === undefined ? "-" : `${speedup.toFixed(2)}x`}</strong></div></section>
-        {system && <section className="context-section"><h2>System</h2>{system.cpu_count && <div className="context-row"><span>CPU Cores</span><strong>{system.cpu_count}</strong></div>}{system.architecture && <div className="context-row"><span>Architecture</span><strong>{system.architecture}</strong></div>}<div className="context-row"><span>OpenMP</span><strong className={system.openmp_available ? "status-complete" : "status-error"}>{system.openmp_available ? "Available" : "Unavailable"}</strong></div>{system.compiler && <div className="context-row"><span>Compiler</span><strong title={system.compiler}>{system.compiler}</strong></div>}</section>}
-        <section className="context-section context-history"><h2>Recent Runs</h2>{history.length === 0 ? <p>No completed runs yet.</p> : history.map((entry, index) => <button type="button" className="context-history-row" key={`${entry.timestamp}-${index}`} onClick={() => { setResponse(entry.response); setLimit(entry.response.parameters.limit); setAlgorithm(entry.response.parameters.algorithm); setNumThreads(entry.response.parameters.num_threads); setLastRun(entry); }}><span>{entry.timestamp}</span><span>{entry.response.parameters.limit.toLocaleString()} / {entry.response.parameters.algorithm}</span></button>)}</section>
-        <section className="context-section benchmark-notes"><h2>Benchmark Notes</h2><p>Timings include process execution.</p><p>Small inputs may make serial faster.</p></section>
-      </aside>
-    <main className="dashboard" id="overview">
-      <div className="dashboard-shell">
-      <header className="page-header"><h1>Sieve of Eratosthenes</h1><p>Compare serial and OpenMP performance for prime number generation</p></header>
+    <div className="app-container">
+      {/* Sidebar Navigation */}
+      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
 
-      <SieveControls onRun={runSieve} loading={loading} limit={limit} algorithm={algorithm} numThreads={numThreads} onLimitChange={setLimit} onAlgorithmChange={setAlgorithm} onNumThreadsChange={setNumThreads} />
+      {/* Main App Body */}
+      <main className="app-main-content">
+        {/* Top Title & Info Header */}
+        <TopHeader />
 
-      {error && (
-          <div className="error-card">
-          {error}
-        </div>
-      )}
+        {/* View Switcher */}
+        {activeTab === "home" && (
+          <div className="stage-cards-stack">
+            {/* Stage 1: Prime Generation */}
+            <PrimeGenCard
+              limit={limit}
+              algorithm={algorithm}
+              numThreads={numThreads}
+              loading={loadingPrimes}
+              response={sieveResponse}
+              onLimitChange={setLimit}
+              onAlgorithmChange={setAlgorithm}
+              onNumThreadsChange={setNumThreads}
+              onRunSieve={() => runSieve()}
+            />
 
-      {response && (
-        <>
-          <SummaryMetrics response={response} />
-          <div className="metrics" id="performance">
-            <PerformanceChart results={response.results} />
-            <SpeedupChart results={response.results} />
+            {/* Stage 2: Select Primes & Generate RSA Keys */}
+            <KeyGenCard
+              primeP={primeP}
+              primeQ={primeQ}
+              availablePrimes={availablePrimes}
+              keys={keys}
+              error={keyGenError}
+              onPrimePChange={handlePrimePChange}
+              onPrimeQChange={handlePrimeQChange}
+              onGenerateKeys={handleGenerateKeys}
+            />
+
+            {/* Stage 3: Encrypt Message */}
+            <EncryptionCard
+              message={message}
+              keys={keys}
+              encryptionResult={encryptionResult}
+              error={encryptError}
+              onMessageChange={handleMessageChange}
+              onEncrypt={handleEncrypt}
+            />
+
+            {/* Stage 4: Decrypt Message */}
+            <DecryptionCard
+              ciphertext={ciphertextInput}
+              keys={keys}
+              decryptionResult={decryptionResult}
+              originalMessage={message}
+              error={decryptError}
+              onCiphertextChange={setCiphertextInput}
+              onDecrypt={handleDecrypt}
+            />
+
+            {/* Stage 5: RSA Workflow Summary */}
+            <WorkflowSummaryCard
+              hasPrimes={sieveResponse !== null}
+              keys={keys}
+              hasCiphertext={encryptionResult !== null}
+              hasDecrypted={decryptionResult !== null}
+              isMatch={decryptionResult?.isMatch || false}
+              onNavigateStage={handleNavigateStage}
+            />
           </div>
+        )}
 
-          <div className="lower-grid">
-            <div id="prime-grid">{response.results.some((r) => r.primes.length > 0) && <PrimeGrid results={response.results} />}</div>
-            <section className="raw-card" id="raw-results">
-              <div className="section-heading"><div className="title-with-icon"><span className="section-icon" aria-hidden="true">⌘</span><h3 className="raw-title">Raw Results</h3></div><button className="copy-button" onClick={copyResults} type="button"><span aria-hidden="true">⧉</span>{copied ? "Copied" : "Copy JSON"}</button></div>
-              <JsonViewer value={response} />
-            </section>
+        {activeTab === "prime-gen" && (
+          <div className="stage-cards-stack">
+            <PrimeGenCard
+              limit={limit}
+              algorithm={algorithm}
+              numThreads={numThreads}
+              loading={loadingPrimes}
+              response={sieveResponse}
+              onLimitChange={setLimit}
+              onAlgorithmChange={setAlgorithm}
+              onNumThreadsChange={setNumThreads}
+              onRunSieve={() => runSieve()}
+            />
           </div>
-        </>
-      )}
-      </div>
-    </main>
-    </>
+        )}
+
+        {activeTab === "key-gen" && (
+          <div className="stage-cards-stack">
+            <KeyGenCard
+              primeP={primeP}
+              primeQ={primeQ}
+              availablePrimes={availablePrimes}
+              keys={keys}
+              error={keyGenError}
+              onPrimePChange={handlePrimePChange}
+              onPrimeQChange={handlePrimeQChange}
+              onGenerateKeys={handleGenerateKeys}
+            />
+          </div>
+        )}
+
+        {activeTab === "encryption" && (
+          <div className="stage-cards-stack">
+            <EncryptionCard
+              message={message}
+              keys={keys}
+              encryptionResult={encryptionResult}
+              error={encryptError}
+              onMessageChange={handleMessageChange}
+              onEncrypt={handleEncrypt}
+            />
+          </div>
+        )}
+
+        {activeTab === "decryption" && (
+          <div className="stage-cards-stack">
+            <DecryptionCard
+              ciphertext={ciphertextInput}
+              keys={keys}
+              decryptionResult={decryptionResult}
+              originalMessage={message}
+              error={decryptError}
+              onCiphertextChange={setCiphertextInput}
+              onDecrypt={handleDecrypt}
+            />
+          </div>
+        )}
+
+        {activeTab === "visualisation" && (
+          <VisualisationView
+            keys={keys}
+            encryptionResult={encryptionResult}
+            decryptionResult={decryptionResult}
+          />
+        )}
+
+        {activeTab === "performance" && (
+          <PerformanceView
+            response={sieveResponse}
+            system={system}
+            onRunMultiThreadBenchmark={handleRunMultiThreadBenchmark}
+            loading={loadingPrimes}
+          />
+        )}
+
+        {activeTab === "about" && <AboutView />}
+      </main>
+    </div>
   );
 }

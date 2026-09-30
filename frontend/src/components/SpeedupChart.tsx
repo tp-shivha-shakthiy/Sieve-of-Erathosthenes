@@ -28,12 +28,12 @@ export default function SpeedupChart({ results }: Props) {
   return (
     <div className="metric-card speedup">
       <div className="metric-heading">
-        <div className="metric-heading-main"><span className="metric-icon" aria-hidden="true">&#128640;</span><h3 className="metric-title">Speedup Factor</h3></div>
+        <div className="metric-heading-main"><span className="metric-icon" aria-hidden="true">&#128640;</span><h3 className="metric-title">Median Benchmark Speedup</h3></div>
         <span className="metric-badge" aria-hidden="true">x</span>
       </div>
       <div className="chart-wrap">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
+        <BarChart data={data} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="rgba(148,163,184,.22)" strokeDasharray="4 4" vertical={false} />
           <XAxis dataKey="name" tick={{ fill: "#cbd5e1", fontSize: 12 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fill: "#cbd5e1", fontSize: 12 }} axisLine={false} tickLine={false} label={{ value: "x", angle: -90, position: "insideLeft", fill: "#94a3b8" }} />
@@ -42,7 +42,7 @@ export default function SpeedupChart({ results }: Props) {
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
-            <LabelList dataKey="speedup" position="top" fill="#d1fae5" fontSize={11} formatter={(value: number) => `${Number(value).toFixed(2)}x`} />
+            <LabelList dataKey="speedup" position="top" offset={8} fill="#d1fae5" fontSize={11} formatter={(value: number) => `${Number(value).toFixed(6)}x`} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

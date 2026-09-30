@@ -1,0 +1,306 @@
+[
+  {
+    "n": 100000000,
+    "block_size": 1000,
+    "threads": 1,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 1396.299982,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 1.0,
+    "thread_scaling_efficiency": 1.0,
+    "serial_vs_openmp_speedup": 0.550741,
+    "trial_count": 5,
+    "times_ms": [
+      1042.099988,
+      1384.200013,
+      1679.250002,
+      1396.299982,
+      1670.799994
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000,
+    "threads": 2,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 765.649998,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 1.823679,
+    "thread_scaling_efficiency": 0.91184,
+    "serial_vs_openmp_speedup": 1.004374,
+    "trial_count": 5,
+    "times_ms": [
+      744.54999,
+      753.950012,
+      765.649998,
+      770.000005,
+      846.049988
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000,
+    "threads": 4,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 549.199986,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 2.542425,
+    "thread_scaling_efficiency": 0.635606,
+    "serial_vs_openmp_speedup": 1.400217,
+    "trial_count": 5,
+    "times_ms": [
+      512.099981,
+      549.199986,
+      579.400003,
+      495.049977,
+      708.19999
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000,
+    "threads": 8,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 385.850012,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 3.618764,
+    "thread_scaling_efficiency": 0.452345,
+    "serial_vs_openmp_speedup": 1.993,
+    "trial_count": 5,
+    "times_ms": [
+      385.850012,
+      378.399968,
+      391.49996,
+      441.39998,
+      369.949985
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 10000,
+    "threads": 1,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 376.199973,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 1.0,
+    "thread_scaling_efficiency": 1.0,
+    "serial_vs_openmp_speedup": 2.044124,
+    "trial_count": 5,
+    "times_ms": [
+      381.299996,
+      376.199973,
+      393.550026,
+      359.000003,
+      359.799981
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 10000,
+    "threads": 2,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 163.950014,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 2.294602,
+    "thread_scaling_efficiency": 1.147301,
+    "serial_vs_openmp_speedup": 4.690449,
+    "trial_count": 5,
+    "times_ms": [
+      160.700023,
+      162.350011,
+      172.649944,
+      180.650008,
+      163.950014
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 10000,
+    "threads": 4,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 80.950034,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 4.647311,
+    "thread_scaling_efficiency": 1.161828,
+    "serial_vs_openmp_speedup": 9.499678,
+    "trial_count": 5,
+    "times_ms": [
+      80.950034,
+      79.849946,
+      76.849997,
+      82.299995,
+      81.649983
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 10000,
+    "threads": 8,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 68.700016,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 5.475981,
+    "thread_scaling_efficiency": 0.684498,
+    "serial_vs_openmp_speedup": 11.193582,
+    "trial_count": 5,
+    "times_ms": [
+      68.700016,
+      64.400005,
+      69.299996,
+      58.599997,
+      116.400015
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 100000,
+    "threads": 1,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 426.600027,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 1.0,
+    "thread_scaling_efficiency": 1.0,
+    "serial_vs_openmp_speedup": 1.802624,
+    "trial_count": 5,
+    "times_ms": [
+      785652.299976,
+      426.600027,
+      697.500026,
+      318.049967,
+      308.599973
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 100000,
+    "threads": 2,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 135.500038,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 3.148339,
+    "thread_scaling_efficiency": 1.574169,
+    "serial_vs_openmp_speedup": 5.67527,
+    "trial_count": 5,
+    "times_ms": [
+      143.000007,
+      147.2,
+      132.199967,
+      135.500038,
+      135.050035
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 100000,
+    "threads": 4,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 71.149993,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 5.995785,
+    "thread_scaling_efficiency": 1.498946,
+    "serial_vs_openmp_speedup": 10.808142,
+    "trial_count": 5,
+    "times_ms": [
+      62.949991,
+      66.45,
+      71.149993,
+      75.950003,
+      78.650033
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 100000,
+    "threads": 8,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 63.349998,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 6.734018,
+    "thread_scaling_efficiency": 0.841752,
+    "serial_vs_openmp_speedup": 12.138899,
+    "trial_count": 5,
+    "times_ms": [
+      62.450004,
+      66.000009,
+      69.200015,
+      63.349998,
+      62.800002
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000000,
+    "threads": 1,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 310.800016,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 1.0,
+    "thread_scaling_efficiency": 1.0,
+    "serial_vs_openmp_speedup": 2.474257,
+    "trial_count": 5,
+    "times_ms": [
+      312.600005,
+      289.999998,
+      319.299972,
+      300.90003,
+      310.800016
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000000,
+    "threads": 2,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 148.90002,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 2.087307,
+    "thread_scaling_efficiency": 1.043653,
+    "serial_vs_openmp_speedup": 5.164534,
+    "trial_count": 5,
+    "times_ms": [
+      142.299998,
+      148.90002,
+      149.800014,
+      157.249975,
+      141.599989
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000000,
+    "threads": 4,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 81.60001,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 3.808823,
+    "thread_scaling_efficiency": 0.952206,
+    "serial_vs_openmp_speedup": 9.424009,
+    "trial_count": 5,
+    "times_ms": [
+      81.250024,
+      82.9,
+      81.550002,
+      81.60001,
+      83.100009
+    ]
+  },
+  {
+    "n": 100000000,
+    "block_size": 1000000,
+    "threads": 8,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 71.399975,
+    "serial_median_execution_time_ms": 768.99925,
+    "thread_scaling_speedup": 4.352943,
+    "thread_scaling_efficiency": 0.544118,
+    "serial_vs_openmp_speedup": 10.770301,
+    "trial_count": 5,
+    "times_ms": [
+      76.549971,
+      71.399975,
+      71.350014,
+      72.699988,
+      69.749999
+    ]
+  }
+]

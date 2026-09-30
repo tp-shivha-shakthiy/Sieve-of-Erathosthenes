@@ -1,0 +1,101 @@
+[
+  {
+    "strategy": "serial",
+    "threads": 1,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 723.3799,
+    "same_strategy_speedup": 1.0,
+    "same_strategy_efficiency": 1.0,
+    "serial_vs_parallel_speedup": 1.0,
+    "trial_count": 5
+  },
+  {
+    "strategy": "naive_openmp",
+    "threads": 1,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 5981.550038,
+    "same_strategy_speedup": 1.0,
+    "same_strategy_efficiency": 1.0,
+    "serial_vs_parallel_speedup": 0.120935,
+    "trial_count": 5
+  },
+  {
+    "strategy": "naive_openmp",
+    "threads": 2,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 6117.349994,
+    "same_strategy_speedup": 0.977801,
+    "same_strategy_efficiency": 0.4889,
+    "serial_vs_parallel_speedup": 0.118251,
+    "trial_count": 5
+  },
+  {
+    "strategy": "naive_openmp",
+    "threads": 4,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 6326.900017,
+    "same_strategy_speedup": 0.945416,
+    "same_strategy_efficiency": 0.236354,
+    "serial_vs_parallel_speedup": 0.114334,
+    "trial_count": 5
+  },
+  {
+    "strategy": "naive_openmp",
+    "threads": 8,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 6937.100017,
+    "same_strategy_speedup": 0.862255,
+    "same_strategy_efficiency": 0.107782,
+    "serial_vs_parallel_speedup": 0.104277,
+    "trial_count": 5
+  },
+  {
+    "strategy": "block_openmp",
+    "threads": 1,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 329.749966,
+    "same_strategy_speedup": 1.0,
+    "same_strategy_efficiency": 1.0,
+    "serial_vs_parallel_speedup": 2.193722,
+    "trial_count": 5
+  },
+  {
+    "strategy": "block_openmp",
+    "threads": 2,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 185.649955,
+    "same_strategy_speedup": 1.776192,
+    "same_strategy_efficiency": 0.888096,
+    "serial_vs_parallel_speedup": 3.896472,
+    "trial_count": 5
+  },
+  {
+    "strategy": "block_openmp",
+    "threads": 4,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 75.599945,
+    "same_strategy_speedup": 4.361775,
+    "same_strategy_efficiency": 1.090444,
+    "serial_vs_parallel_speedup": 9.568524,
+    "trial_count": 5
+  },
+  {
+    "strategy": "block_openmp",
+    "threads": 8,
+    "block_size": 10000,
+    "prime_count": 5761455,
+    "median_execution_time_ms": 69.799984,
+    "same_strategy_speedup": 4.724213,
+    "same_strategy_efficiency": 0.590527,
+    "serial_vs_parallel_speedup": 10.363611,
+    "trial_count": 5
+  }
+]

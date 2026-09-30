@@ -6,8 +6,8 @@ COPY cpp/sieve_serial.cpp .
 COPY cpp/sieve_openmp.cpp .
 
 RUN mkdir -p /out \
-    && g++ -O2 -std=c++17 -o /out/sieve_serial sieve_serial.cpp \
-    && g++ -O2 -std=c++17 -fopenmp -o /out/sieve_openmp sieve_openmp.cpp
+    && g++ -O2 -Wall -Wextra -std=c++17 -o /out/sieve_serial sieve_serial.cpp \
+    && g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o /out/sieve_openmp sieve_openmp.cpp
 
 # Runtime stage
 FROM python:3.12-slim

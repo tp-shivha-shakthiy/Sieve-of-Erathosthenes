@@ -31,6 +31,7 @@ start.bat, start.sh  Launch helpers
 - Python 3.9 or later
 - Node.js and npm
 - MinGW `g++` with OpenMP support
+- Microsoft MPI (Windows) or an MPI installation providing `mpicxx` and `mpiexec`
 
 ## Run on Windows
 
@@ -46,6 +47,12 @@ Build the native sieve executables:
 ```powershell
 g++ -O2 -Wall -Wextra -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
 g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
+
+# Microsoft MPI with MinGW g++ (8.3 paths avoid spaces in the SDK path)
+g++ -O2 -Wall -Wextra -std=c++17 `
+  -IC:\PROGRA~2\MICROS~3\MPI\Include `
+  -LC:\PROGRA~2\MICROS~3\MPI\Lib\x64 `
+  -o backend\bin\sieve_mpi.exe cpp\sieve_mpi.cpp -lmsmpi
 ```
 
 Start both services:
@@ -138,6 +145,12 @@ large limits (100M) may need a larger instance.
 g++ -O2 -Wall -Wextra -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
 g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
 
+# MPI module (Microsoft MPI on Windows)
+g++ -O2 -Wall -Wextra -std=c++17 `
+  -IC:\PROGRA~2\MICROS~3\MPI\Include `
+  -LC:\PROGRA~2\MICROS~3\MPI\Lib\x64 `
+  -o backend\bin\sieve_mpi.exe cpp\sieve_mpi.cpp -lmsmpi
+
 # Run services separately
 python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 npm --prefix frontend run dev -- --host 127.0.0.1
@@ -155,3 +168,48 @@ python benchmarks\run_scalability.py
 ```
 
 The benchmark validates known prime counts for `100,000`, `1,000,000`, and `10,000,000`, runs one warm-up and seven measured samples at 1, 2, 4, and 8 OpenMP threads, and writes the canonical CSV, raw trials, metadata, and generated Markdown table to `results/`. See `docs/PADC_ANALYSIS.md` for the algorithm, PCAM/dependency analysis, diagrams, and limitations.
+
+## MPI Module III
+
+The MPI implementation is `cpp/sieve_mpi.cpp`. It partitions `[2, N]` into
+contiguous rank-owned ranges. When the range is uneven, the first ranks receive
+one extra candidate; ranges never overlap. Ranks with no candidates receive an
+empty range and contribute zero.
+
+Rank 0 generates the base primes through `floor(sqrt(N))`, then broadcasts the
+count and values with `MPI_Bcast`. Every rank marks multiples in its own range,
+counts its unmarked values, and sends that local count to rank 0 through
+`MPI_Reduce(..., MPI_SUM, ...)`. Optional prime-list output is gathered with
+`MPI_Gatherv` after timing. Debug range output goes to `stderr`; benchmark JSON
+goes to `stdout`.
+
+MPI timing starts after a barrier and uses the maximum rank-local `MPI_Wtime`
+interval. It includes base-prime generation, broadcast, local marking/counting,
+and count reduction, so rank 0 reports the slowest distributed computation.
+Repeated runs report the average of those intervals.
+
+Check the required values and a larger value against serial output:
+
+```powershell
+foreach ($n in 10, 30, 100, 1000000) {
+  mpiexec -n 4 backend\bin\sieve_mpi.exe $n 0 1 0
+  backend\bin\sieve_serial.exe $n 0 1
+}
+```
+
+For repeatable three-way measurements, use the same fixed process/thread counts,
+discard one warm-up, and capture several repetitions with prime-list output
+disabled:
+
+```powershell
+$limits = 100000, 1000000, 10000000, 100000000
+foreach ($n in $limits) {
+  backend\bin\sieve_serial.exe $n 0 8
+  backend\bin\sieve_openmp.exe $n 4 0 8
+  mpiexec -n 4 backend\bin\sieve_mpi.exe $n 0 8 0
+}
+```
+
+Compare `prime_count` before comparing times, and record compiler flags, CPU,
+logical cores, OS, MPI implementation, process count, and OpenMP thread count.
+Timing values are machine-specific and must come from captured program output.

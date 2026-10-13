@@ -4,7 +4,7 @@
 
 ## 1. Objective and Description
 
-The objective is to compute all prime numbers up to an upper bound `n` and compare a sequential C++ implementation against a shared-memory OpenMP implementation. The project studies whether a regular, memory-intensive scientific-style computation benefits from multicore execution.
+The objective is to compute all prime numbers up to an upper bound `n` and compare sequential C++, shared-memory OpenMP, and distributed-memory MPI implementations. The project studies how a regular, memory-intensive scientific-style computation behaves across execution models.
 
 **What:** the Sieve of Eratosthenes repeatedly marks multiples of each prime as composite.
 
@@ -12,7 +12,7 @@ The objective is to compute all prime numbers up to an upper bound `n` and compa
 
 **Where:** the workload represents regular-grid applications in scientific computing: an indexed domain is partitioned into contiguous regions. Unlike irregular workloads, each region has a predictable layout, though the number of multiples marked per prime is non-uniform.
 
-The project runs on a shared-memory multi-core CPU. It intentionally does not claim GPU or MPI implementation: those are separately designed extensions described below.
+The serial and OpenMP programs run on a shared-memory multi-core CPU; MPI Module III distributes the candidate range across processes.
 
 ## 2. Algorithm and Pseudocode
 
@@ -109,7 +109,7 @@ The composite-marking loop has regular strides for an individual prime but varyi
 
 ### MPI distributed-memory extension
 
-An MPI version can partition `[2, n]` among ranks using the same PCAM partitioning. Rank 0 can generate base primes and distribute them with `MPI_Bcast`; each rank marks its local segment; `MPI_Reduce` sums local counts. Non-blocking `MPI_Ibcast`/`MPI_Ireduce` can overlap communication with setup where supported. A one-dimensional Cartesian topology maps naturally to contiguous numeric ranges. MPI-IO can write per-rank result ranges to one file. One-sided communication is unnecessary for this regular read-only base-prime communication pattern and should not be added without a measured reason. This is a design extension, not an implemented feature.
+MPI Module III partitions `[2, n]` among ranks using the same contiguous range decomposition. Rank 0 generates base primes and distributes them with `MPI_Bcast`; each rank marks its local segment; `MPI_Reduce` sums local counts. The first ranks receive one extra value when the range is uneven, and ranks beyond the useful work receive empty ranges. Optional prime-list output uses `MPI_Gatherv` after timing. Non-blocking collectives, MPI-IO, and one-sided communication are outside the implementation because they are not needed for this regular read-only pattern.
 
 ## 8. Performance-Tool Plan
 
@@ -135,11 +135,21 @@ cd cpp
 mingw32-make
 ```
 
-This produces `backend/bin/sieve_serial.exe` and `backend/bin/sieve_openmp.exe`. The API validates limits from 2 to 100,000,000 and threads from 1 to 64. Use `build.bat` for the complete application setup when CMake or a direct `g++` toolchain is available.
+This produces `backend/bin/sieve_serial.exe` and `backend/bin/sieve_openmp.exe`. Build Module III with Microsoft MPI on Windows:
+
+```powershell
+g++ -O2 -Wall -Wextra -std=c++17 `
+  -IC:\PROGRA~2\MICROS~3\MPI\Include `
+  -LC:\PROGRA~2\MICROS~3\MPI\Lib\x64 `
+  -o backend\bin\sieve_mpi.exe cpp\sieve_mpi.cpp -lmsmpi
+mpiexec -n 4 backend\bin\sieve_mpi.exe 1000000 0 8 0
+```
+
+On an MPI installation with a compiler wrapper, use `mpicxx -O2 -Wall -Wextra -std=c++17 -o backend/bin/sieve_mpi cpp/sieve_mpi.cpp`. The API validates limits from 2 to 100,000,000 and threads from 1 to 64.
 
 ## 10. Limitations and Honest Conclusions
 
-- The current program is shared-memory OpenMP only; MPI, GPU, SIMD intrinsics, parallel I/O, and energy profiling are documented extensions, not completed claims.
+- The current program includes serial, shared-memory OpenMP, and MPI Module III; GPU, SIMD intrinsics, parallel I/O, and energy profiling remain outside the implementation.
 - Timing includes allocation, marking, and counting. Serial and OpenMP now use the same byte-per-entry representation for a fairer comparison.
 - Report negative speedup at small inputs honestly. It demonstrates parallel overhead and supports the scalability discussion.
 - Results are hardware-dependent. A strict conclusion requires the generated repeated-run data, not a screenshot of one run.

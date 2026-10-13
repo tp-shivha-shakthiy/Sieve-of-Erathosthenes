@@ -11,8 +11,9 @@ import {
   Line,
   Legend,
 } from "recharts";
-import { Cpu, Zap, Activity, Play, Layers } from "lucide-react";
+import { Cpu, Zap, Activity, Play, Layers, Upload } from "lucide-react";
 import { SieveResponse, SieveResult } from "../App";
+import { addBenchmarkMetrics, parseMpiBenchmarkJson, BenchmarkRecord } from "../utils/benchmarkData";
 
 interface PerformanceViewProps {
   response: SieveResponse | null;
@@ -36,16 +37,32 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
   const [multiThreadResults, setMultiThreadResults] = useState<
     Array<{ threads: number; timeMs: number; speedup: number; efficiency: number }>
   >([]);
+  const [mpiText, setMpiText] = useState("");
+  const [mpiResult, setMpiResult] = useState<BenchmarkRecord | null>(null);
+  const [mpiError, setMpiError] = useState<string | null>(null);
 
   const serialResult = response?.results.find((r) => r.algorithm === "serial");
   const openmpResult = response?.results.find((r) => r.algorithm === "openmp");
+  const benchmarkRows = addBenchmarkMetrics([
+    ...(response?.results || []),
+    ...(mpiResult ? [mpiResult] : []),
+  ]);
 
   // Chart data from current response
-  const timeChartData = response?.results.map((r) => ({
-    name: r.algorithm === "openmp" ? `OpenMP (${r.num_threads || 4}T)` : "Serial",
+  const timeChartData = benchmarkRows.map((r) => ({
+    name: r.algorithm === "openmp" ? `OpenMP (${r.num_threads || 4}T)` : r.algorithm === "mpi" ? `MPI (${r.num_processes || 1}P)` : "Serial",
     timeMs: Number(r.execution_time_ms.toFixed(3)),
     primeCount: r.prime_count,
   })) || [];
+
+  const handleImportMpi = () => {
+    try {
+      setMpiResult(parseMpiBenchmarkJson(mpiText));
+      setMpiError(null);
+    } catch (error) {
+      setMpiError(error instanceof Error ? error.message : "Could not parse MPI JSON.");
+    }
+  };
 
   const handleRunMultiTest = async () => {
     await onRunMultiThreadBenchmark(benchLimit);
@@ -164,6 +181,44 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="chart-card mpi-benchmark-card">
+        <div className="chart-card-title-row">
+          <div>
+            <h3 className="chart-card-title">MPI benchmark input</h3>
+            <p className="chart-card-subtitle">Paste the rank-0 JSON from <code>sieve_mpi.exe</code>; no synthetic values are added.</p>
+          </div>
+          <Upload size={18} className="text-blue-600" />
+        </div>
+        <div className="mpi-benchmark-import">
+          <textarea value={mpiText} onChange={(event) => setMpiText(event.target.value)} placeholder={'{"algorithm":"mpi",...}'} aria-label="MPI benchmark JSON" />
+          <button type="button" className="btn-sm btn-primary" onClick={handleImportMpi} disabled={!mpiText.trim()}><Upload size={14} /> Add MPI result</button>
+        </div>
+        {mpiError && <p className="form-error">{mpiError}</p>}
+        {mpiResult && <p className="imported-result">MPI result loaded: N={mpiResult.limit.toLocaleString()}, {mpiResult.num_processes} processes, {mpiResult.execution_time_ms.toFixed(3)} ms.</p>}
+      </div>
+
+      <div className="chart-card benchmark-metrics-card">
+        <h3 className="chart-card-title">Measured speedup and efficiency</h3>
+        <p className="chart-card-subtitle">Calculated from the serial time and each real result's worker count.</p>
+        {benchmarkRows.length > 0 ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={benchmarkRows.map((row) => ({
+              name: row.algorithm === "openmp" ? "OpenMP" : row.algorithm === "mpi" ? "MPI" : "Serial",
+              speedup: Number(row.speedup.toFixed(3)),
+              efficiency: Number((row.efficiency * 100).toFixed(1)),
+            }))} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="name" stroke="#64748b" />
+              <YAxis stroke="#64748b" />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="speedup" fill="#2563eb" name="Speedup (x)" />
+              <Bar dataKey="efficiency" fill="#059669" name="Efficiency (%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : <div className="chart-empty">Run serial/OpenMP or import an MPI result to plot measurements.</div>}
       </div>
 
       {/* Educational PDC Concepts */}

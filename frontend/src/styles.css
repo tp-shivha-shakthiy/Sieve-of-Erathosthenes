@@ -1673,3 +1673,208 @@ body {
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+.mpi-visual-card {
+  border-top: 3px solid #2563eb;
+}
+
+.vis-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mpi-inputs,
+.mpi-step-controls,
+.mpi-rank-heading,
+.chart-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mpi-inputs label,
+.mpi-speed {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.mpi-inputs input,
+.mpi-speed select {
+  width: 76px;
+  margin-left: 4px;
+  padding: 6px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-main);
+  font: inherit;
+}
+
+.mpi-stage-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+}
+
+.mpi-stage-banner strong {
+  display: block;
+  color: #1e3a8a;
+  font-size: 0.98rem;
+}
+
+.mpi-stage-banner p {
+  margin-top: 3px;
+  color: #475569;
+  font-size: 0.76rem;
+}
+
+.mpi-kicker {
+  display: block;
+  color: #2563eb;
+  font: 600 0.68rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mpi-rank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mpi-rank-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #94a3b8;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  background: #f8fafc;
+}
+
+.mpi-rank-card.active {
+  border-left-color: #2563eb;
+  background: #eff6ff;
+}
+
+.mpi-rank-heading {
+  justify-content: space-between;
+  color: var(--text-main);
+  font-size: 0.78rem;
+}
+
+.mpi-stage-tag {
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #334155;
+  background: #e2e8f0;
+  font: 600 0.58rem var(--font-mono);
+  text-transform: uppercase;
+}
+
+.stage-broadcast { background: #dbeafe; color: #1d4ed8; }
+.stage-marking { background: #fef3c7; color: #92400e; }
+.stage-local-count, .stage-reduce { background: #d1fae5; color: #065f46; }
+.stage-complete { background: #dcfce7; color: #166534; }
+
+.mpi-grid-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.mpi-grid-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mpi-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.mpi-number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 5px;
+}
+
+.mpi-number-cell {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.mpi-number-cell strong { font: 700 0.86rem var(--font-mono); }
+.mpi-number-cell small { font-size: 0.58rem; opacity: 0.75; }
+.mpi-number-cell { box-shadow: inset 0 -3px var(--rank-color, #94a3b8); }
+.rank-0 { --rank-color: #2563eb; }
+.rank-1 { --rank-color: #db2777; }
+.rank-2 { --rank-color: #059669; }
+.rank-3 { --rank-color: #ea580c; }
+.rank-4 { --rank-color: #7c3aed; }
+.rank-5 { --rank-color: #0891b2; }
+.rank-6 { --rank-color: #ca8a04; }
+.rank-7 { --rank-color: #be123c; }
+.state-unprocessed { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
+.state-processing { background: #fef3c7; border-color: #f59e0b; color: #92400e; transform: scale(1.06); }
+.state-prime { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.state-composite { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.swatch-unprocessed { background: #f8fafc; }
+.swatch-processing { background: #fef3c7; }
+.swatch-prime { background: #d1fae5; }
+.swatch-composite { background: #fee2e2; }
+
+.mpi-benchmark-card,
+.benchmark-metrics-card {
+  margin-top: 18px;
+}
+
+.mpi-benchmark-import {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.mpi-benchmark-import textarea {
+  flex: 1;
+  min-height: 74px;
+  resize: vertical;
+  padding: 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  color: var(--text-main);
+  font: 0.72rem var(--font-mono);
+}
+
+.form-error { margin-top: 8px; color: #b91c1c; font-size: 0.75rem; }
+.imported-result { margin-top: 8px; color: #047857; font-size: 0.75rem; }
+
+@media (max-width: 760px) {
+  .vis-card-header, .mpi-stage-banner { align-items: stretch; flex-direction: column; }
+  .mpi-inputs, .mpi-step-controls { flex-wrap: wrap; }
+  .mpi-benchmark-import { flex-direction: column; }
+  .mpi-benchmark-import textarea { width: 100%; }
+}

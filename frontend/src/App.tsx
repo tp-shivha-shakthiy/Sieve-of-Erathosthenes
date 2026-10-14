@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Sidebar, NavTab } from "./components/Sidebar";
 import { TopHeader } from "./components/TopHeader";
 import { PrimeGenCard } from "./components/PrimeGenCard";
@@ -29,6 +29,15 @@ export interface SieveResult {
   primes: number[];
   speedup?: number;
   efficiency?: number;
+  num_processes?: number;
+  trial_count?: number;
+  ranks?: Array<{
+    rank: number;
+    low: number;
+    high: number;
+    workload: number;
+    execution_time_ms: number;
+  }>;
 }
 
 export interface SieveResponse {
@@ -66,6 +75,7 @@ export default function App() {
   const [algorithm, setAlgorithm] = useState("both");
   const [numThreads, setNumThreads] = useState(4);
   const [loadingPrimes, setLoadingPrimes] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [sieveResponse, setSieveResponse] = useState<SieveResponse | null>(null);
   const [availablePrimes, setAvailablePrimes] = useState<number[]>([]);
 
@@ -235,8 +245,30 @@ export default function App() {
   };
 
   // Run Multi-thread Benchmark for Performance View
-  const handleRunMultiThreadBenchmark = async (benchLimit: number) => {
-    await runSieve(benchLimit, "both", 4);
+  const handleRunMultiThreadBenchmark = async (benchLimit: number, mpiProcesses: number[]) => {
+    setLoadingPrimes(true);
+    setBenchmarkError(null);
+    try {
+      const res = await fetch(`${API_BASE}/benchmark`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          limit: benchLimit,
+          algorithm: "both",
+          num_threads: 4,
+          return_primes: false,
+          include_mpi: true,
+          mpi_processes: mpiProcesses,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Native MPI benchmark failed.");
+      setSieveResponse(data as SieveResponse);
+    } catch (error) {
+      setBenchmarkError(error instanceof Error ? error.message : "Native MPI benchmark failed.");
+    } finally {
+      setLoadingPrimes(false);
+    }
   };
 
   return (
@@ -245,7 +277,11 @@ export default function App() {
       <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
 
       {/* Main App Body */}
-      <main className="app-main-content">
+      <main
+        className={`app-main-content ${
+          activeTab === "visualisation" || activeTab === "performance" ? "demo-mode" : ""
+        }`}
+      >
         {/* Top Title & Info Header */}
         <TopHeader />
 
@@ -382,6 +418,7 @@ export default function App() {
             system={system}
             onRunMultiThreadBenchmark={handleRunMultiThreadBenchmark}
             loading={loadingPrimes}
+            error={benchmarkError}
           />
         )}
 

@@ -48,10 +48,13 @@ Build the native sieve executables:
 g++ -O2 -Wall -Wextra -std=c++17 -o backend\bin\sieve_serial.exe cpp\sieve_serial.cpp
 g++ -O2 -Wall -Wextra -std=c++17 -fopenmp -o backend\bin\sieve_openmp.exe cpp\sieve_openmp.cpp
 
-# Microsoft MPI with MinGW g++ (8.3 paths avoid spaces in the SDK path)
+# Microsoft MPI SDK with MinGW g++ (the runtime alone is not enough to compile)
+$mpiRoot = "${env:ProgramFiles(x86)}\Microsoft SDKs\MPI"
+$mpiInclude = Join-Path $mpiRoot "Include"
+$mpiLib = Join-Path $mpiRoot "Lib\x64"
 g++ -O2 -Wall -Wextra -std=c++17 `
-  -IC:\PROGRA~2\MICROS~3\MPI\Include `
-  -LC:\PROGRA~2\MICROS~3\MPI\Lib\x64 `
+  -I"$mpiInclude" `
+  -L"$mpiLib" `
   -o backend\bin\sieve_mpi.exe cpp\sieve_mpi.cpp -lmsmpi
 ```
 
@@ -197,18 +200,29 @@ foreach ($n in 10, 30, 100, 1000000) {
 }
 ```
 
-For repeatable three-way measurements, use the same fixed process/thread counts,
-discard one warm-up, and capture several repetitions with prime-list output
-disabled:
+For repeatable three-way measurements, build `sieve_mpi.exe` first, then run the
+MPI capture script. It measures serial, OpenMP (8 threads), and MPI at 1, 2, 4,
+and 8 processes, discards no recorded sample because the native programs already
+use 20 in-program repetitions, and writes `results/mpi_benchmark.json` plus
+`results/mpi_benchmark.csv`:
 
 ```powershell
-$limits = 100000, 1000000, 10000000, 100000000
-foreach ($n in $limits) {
-  backend\bin\sieve_serial.exe $n 0 8
-  backend\bin\sieve_openmp.exe $n 4 0 8
-  mpiexec -n 4 backend\bin\sieve_mpi.exe $n 0 8 0
-}
+python benchmarks\run_mpi_scalability.py
 ```
+
+To manually verify one run and capture its rank-0 JSON for the dashboard:
+
+```powershell
+& "C:\Program Files\Microsoft MPI\Bin\mpiexec.exe" -n 4 backend\bin\sieve_mpi.exe 1000000 0 20 0 > mpi-rank0.json
+Get-Content mpi-rank0.json | Set-Clipboard
+```
+
+Paste that JSON, or the contents of `results\mpi_benchmark.json`, into the MPI
+benchmark input. The dashboard shows speedup and efficiency only when a serial
+measurement for the same N is present. If the SDK directory lookup returns no
+path, this machine has the Microsoft MPI launcher/runtime but not the C++ SDK;
+install the matching Microsoft MPI SDK before compiling and do not report MPI
+performance from this environment as verified.
 
 Compare `prime_count` before comparing times, and record compiler flags, CPU,
 logical cores, OS, MPI implementation, process count, and OpenMP thread count.

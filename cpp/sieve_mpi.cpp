@@ -86,7 +86,9 @@ std::vector<char> mark_owned_range(int low, int high, int limit,
 
 void print_json(int limit, int process_count, long long prime_count, double elapsed_ms,
                 int repetitions, const std::vector<char>& global_is_prime,
-                bool return_primes) {
+                bool return_primes, const std::vector<int>& rank_lows,
+                const std::vector<int>& rank_highs,
+                const std::vector<double>& rank_elapsed_ms) {
     std::cout << std::setprecision(12) << "{"
               << "\"algorithm\":\"mpi\"," 
               << "\"limit\":" << limit << ","
@@ -95,6 +97,19 @@ void print_json(int limit, int process_count, long long prime_count, double elap
               << "\"execution_time_ms\":" << elapsed_ms << ","
               << "\"average_per_run_ms\":" << elapsed_ms << ","
               << "\"timing_repetitions\":" << repetitions << ","
+              << "\"ranks\":[";
+    for (int rank = 0; rank < process_count; ++rank) {
+        if (rank > 0) std::cout << ",";
+        const int workload = rank_highs[rank] >= rank_lows[rank]
+            ? rank_highs[rank] - rank_lows[rank] + 1 : 0;
+        std::cout << "{\"rank\":" << rank
+                  << ",\"low\":" << rank_lows[rank]
+                  << ",\"high\":" << rank_highs[rank]
+                  << ",\"workload\":" << workload
+                  << ",\"execution_time_ms\":" << rank_elapsed_ms[rank]
+                  << "}";
+    }
+    std::cout << "],"
               << "\"primes\":[";
     if (return_primes && limit <= 1000000) {
         bool first = true;
@@ -137,6 +152,7 @@ int main(int argc, char* argv[]) {
 
         long long prime_count = 0;
         double total_elapsed = 0.0;
+        double final_local_elapsed = 0.0;
         std::vector<char> final_local_primes;
 
         for (int run = 0; run < repetitions; ++run) {
@@ -163,8 +179,28 @@ int main(int argc, char* argv[]) {
             MPI_Reduce(&local_elapsed, &run_elapsed, 1, MPI_DOUBLE, MPI_MAX,
                        0, MPI_COMM_WORLD);
             if (rank == 0) total_elapsed += run_elapsed;
-            if (run == repetitions - 1) final_local_primes = std::move(local_primes);
+            if (run == repetitions - 1) {
+                final_local_elapsed = local_elapsed;
+                final_local_primes = std::move(local_primes);
+            }
         }
+
+        std::vector<int> rank_lows;
+        std::vector<int> rank_highs;
+        std::vector<double> rank_elapsed_ms;
+        if (rank == 0) {
+            rank_lows.resize(process_count);
+            rank_highs.resize(process_count);
+            rank_elapsed_ms.resize(process_count);
+        }
+        MPI_Gather(&low, 1, MPI_INT, rank == 0 ? rank_lows.data() : nullptr, 1,
+                   MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gather(&high, 1, MPI_INT, rank == 0 ? rank_highs.data() : nullptr, 1,
+                   MPI_INT, 0, MPI_COMM_WORLD);
+        double final_local_elapsed_ms = final_local_elapsed * 1000.0;
+        MPI_Gather(&final_local_elapsed_ms, 1, MPI_DOUBLE,
+                   rank == 0 ? rank_elapsed_ms.data() : nullptr, 1, MPI_DOUBLE,
+                   0, MPI_COMM_WORLD);
 
         if (debug) {
             std::cerr << "rank " << rank << " owns [" << low << ", " << high
@@ -203,7 +239,8 @@ int main(int argc, char* argv[]) {
         if (rank == 0) {
             print_json(limit, process_count, prime_count,
                        total_elapsed * 1000.0 / repetitions, repetitions,
-                       global_is_prime, return_primes);
+                       global_is_prime, return_primes, rank_lows, rank_highs,
+                       rank_elapsed_ms);
         }
     } catch (const std::exception& error) {
         if (rank == 0) std::cerr << "Invalid argument: " << error.what() << "\n";

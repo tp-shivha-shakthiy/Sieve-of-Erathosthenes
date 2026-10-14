@@ -23,6 +23,7 @@ export interface MpiCell {
   rank: number;
   state: MpiCellState;
   factor?: number;
+  justMarked?: boolean;
 }
 
 export interface MpiStep {
@@ -35,6 +36,7 @@ export interface MpiStep {
   ranks: MpiRange[];
   basePrimes: number[];
   totalPrimeCount: number;
+  markedThisRound: number[];
 }
 
 export function partitionMpiRange(limit: number, processCount: number): MpiRange[] {
@@ -92,11 +94,12 @@ export function generateMpiSimulation(limit = 30, processCount = 4): {
   const primeFlags = Array(limit + 1).fill(true) as boolean[];
   primeFlags[0] = false;
   primeFlags[1] = false;
-  const cells = Array.from({ length: limit - 1 }, (_, index) => ({
+  const cells: MpiCell[] = Array.from({ length: limit - 1 }, (_, index) => ({
     num: index + 2,
     rank: ranges.find((range) => range.low <= index + 2 && index + 2 <= range.high)?.rank ?? 0,
     state: "unprocessed" as MpiCellState,
   }));
+
   const steps: MpiStep[] = [];
   const snapshot = (
     stage: MpiStage,
@@ -106,6 +109,7 @@ export function generateMpiSimulation(limit = 30, processCount = 4): {
     currentRanges: MpiRange[],
     currentPrime?: number,
     activeRank?: number,
+    markedThisRound: number[] = [],
   ) => steps.push({
     stage,
     label,
@@ -116,26 +120,36 @@ export function generateMpiSimulation(limit = 30, processCount = 4): {
     ranks: currentRanges.map((range) => ({ ...range })),
     basePrimes: [...basePrimes],
     totalPrimeCount: currentCells.filter((cell) => cell.state === "prime").length,
+    markedThisRound: [...markedThisRound],
   });
 
   snapshot("unprocessed", "Initial distribution", `Values 2-${limit} are distributed across ${processCount} MPI ranks.`, cells, ranges);
 
+  let activePrimeCell: MpiCell | undefined;
   for (const prime of basePrimes) {
+    if (activePrimeCell) activePrimeCell.state = "unprocessed";
     const primeCell = cells.find((cell) => cell.num === prime);
     if (primeCell) primeCell.state = "processing";
-    snapshot("base-generation", `Base prime ${prime}`, `Rank 0 generated base prime ${prime} while preparing the shared factor list.`, cells, cloneRanges(ranges, "base-generation"), prime);
-    snapshot("broadcast", "MPI_Bcast", `Rank 0 broadcasts base prime ${prime} to every rank before marking.`, cells, cloneRanges(ranges, "broadcast"), prime);
+    activePrimeCell = primeCell;
 
+    snapshot("base-generation", `Base prime ${prime}`, `Rank 0 generated base prime ${prime} while preparing the shared factor list.`, cells, cloneRanges(ranges, "base-generation"), prime, 0);
+    snapshot("broadcast", "MPI_Bcast", `Rank 0 broadcasts base prime ${prime} to every rank before marking.`, cells, cloneRanges(ranges, "broadcast"), prime, 0);
+
+    for (const cell of cells) cell.justMarked = false;
+    const markedNow: number[] = [];
     for (const cell of cells) {
-      if (cell.num % prime === 0 && cell.num !== prime && cell.num >= prime * prime) {
+      if (cell.num % prime === 0 && cell.num !== prime && cell.num >= prime * prime && cell.state !== "composite") {
         primeFlags[cell.num] = false;
         cell.state = "composite";
         cell.factor = prime;
+        cell.justMarked = true;
+        markedNow.push(cell.num);
       }
     }
-    if (primeCell) primeCell.state = "processing";
-    snapshot("marking", `Mark multiples of ${prime}`, `Each rank marks multiples of ${prime} only inside its owned range.`, cells, cloneRanges(ranges, "marking"), prime);
+    snapshot("marking", `Mark multiples of ${prime}`, `Every rank marks multiples of ${prime} only inside its own range.`, cells, cloneRanges(ranges, "marking"), prime, undefined, markedNow);
   }
+  if (activePrimeCell) activePrimeCell.state = "unprocessed";
+  for (const cell of cells) cell.justMarked = false;
 
   for (const cell of cells) {
     if (primeFlags[cell.num]) cell.state = "prime";

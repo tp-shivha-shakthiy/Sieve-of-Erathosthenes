@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, CheckCircle2, Loader2, Sparkles, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, CheckCircle2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { SieveResponse } from "../App";
 import { generateSieveSimulation, SieveStep } from "../utils/sieveSimulation";
 

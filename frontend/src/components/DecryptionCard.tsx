@@ -186,7 +186,7 @@ export const DecryptionCard: React.FC<DecryptionCardProps> = ({
               ) : (
                 <div className="warning-badge-pill">
                   <AlertTriangle size={16} className="text-amber-500" />
-                  <span>Output differs from initial input</span>
+                  <span>Output differs from initial input "{originalMessage}"</span>
                 </div>
               )}
             </div>
